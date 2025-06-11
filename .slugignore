@@ -2,7 +2,6 @@
 *.xlsx
 *.png
 *.h5
-*.pkl
 *.csv
 *.ipynb
 *.xls
@@ -27,3 +26,4 @@ xgb_test_vs_prediction.png
 NaturalGasDemand_Input.xlsx
 NaturalGasDemand_Future_Input.xlsx
 # requirements.txt must NOT be excluded!
+# DO NOT exclude .pkl or .save files so models are included in slug
