@@ -27,26 +27,27 @@ def index():
             file = request.files['excel_file']
             try:
                 df = pd.read_excel(file)
-                # Normalize column names (strip, lower, replace spaces)
-                df.columns = [str(col).strip().replace("  ", " ").replace(" ", "_").replace("-", "_") for col in df.columns]
-                # Map expected features to uploaded columns
+                # Normalize column names (strip, lower, replace spaces, remove dots)
+                df.columns = [str(col).strip().replace("  ", " ").replace(" ", "_").replace("-", "_").replace(".", "") for col in df.columns]
+                # Map expected features to uploaded columns (robust to whitespace, case, dots)
                 feature_map = {}
                 for feat in FEATURES:
+                    feat_norm = feat.strip().replace(" ", "_").replace("-", "_").replace(".", "").lower()
                     for col in df.columns:
-                        if feat.replace(" ", "_").lower() == col.lower():
+                        if feat_norm == col.lower():
                             feature_map[feat] = col
                             break
-                if len(feature_map) != len(FEATURES):
-                    error = f"Excel file must contain columns: {', '.join(FEATURES)}"
+                # Find Month column
+                month_col = None
+                for col in df.columns:
+                    if col.lower() == 'month':
+                        month_col = col
+                        break
+                if len(feature_map) != len(FEATURES) or not month_col:
+                    error = f"Excel file must contain columns: Month, {', '.join(FEATURES)}"
                 else:
-                    # Only keep Month and mapped features
-                    cols_needed = ['Month'] + [feature_map[feat] for feat in FEATURES]
-                    if 'Month' not in df.columns:
-                        # Try to find a column that matches 'Month' (case-insensitive)
-                        for col in df.columns:
-                            if col.lower() == 'month':
-                                df.rename(columns={col: 'Month'}, inplace=True)
-                                break
+                    # Only keep Month and mapped features, in correct order
+                    cols_needed = [month_col] + [feature_map[feat] for feat in FEATURES]
                     df = df[cols_needed]
                     if len(df) > 10:
                         df = df.iloc[:10]
@@ -83,7 +84,6 @@ def index():
                 try:
                     preds = model.predict(X_pred_scaled, validate_features=False)
                 except Exception:
-                    # fallback for older xgboost/joblib: use get_booster().predict
                     import xgboost as xgb
                     dmatrix = xgb.DMatrix(X_pred_scaled)
                     preds = model.get_booster().predict(dmatrix)

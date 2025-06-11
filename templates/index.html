@@ -14,27 +14,36 @@
             padding: 0;
         }
         .container {
-            max-width: 600px;
-            margin: 32px auto;
+            max-width: 100vw;
+            min-width: 0;
+            margin: 0 auto;
             background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
-            padding: 28px 18px 18px 18px;
+            border-radius: 0;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08);
+            padding: 28px 8vw 18px 8vw;
         }
         h1 {
             text-align: center;
             color: #185a9d;
             margin-bottom: 18px;
         }
-        .forecast-result {
-            background: #e3fcec;
-            color: #1b5e20;
-            border-radius: 8px;
-            padding: 12px;
+        .forecast-table {
+            width: 100%;
+            border-collapse: collapse;
             margin-bottom: 18px;
-            font-size: 1.1em;
+            background: #e3fcec;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .forecast-table th, .forecast-table td {
+            border: 1px solid #b0bec5;
+            padding: 8px 6px;
             text-align: center;
-            font-weight: bold;
+            font-size: 1em;
+        }
+        .forecast-table th {
+            background: #b2ebf2;
+            color: #185a9d;
         }
         .error {
             background: #ffeaea;
@@ -75,10 +84,15 @@
         .submit-btn:hover {
             background: linear-gradient(90deg, #185a9d, #43cea2);
         }
+        .manual-table-wrapper {
+            overflow-x: auto;
+            width: 100%;
+        }
         .manual-table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 18px;
+            min-width: 700px;
         }
         .manual-table th, .manual-table td {
             border: 1px solid #b0bec5;
@@ -98,9 +112,15 @@
             border-radius: 4px;
             font-size: 0.98em;
         }
-        @media (max-width: 700px) {
+        @media (max-width: 900px) {
             .container { padding: 8px; }
             .manual-table th, .manual-table td { font-size: 0.92em; }
+            .manual-table { min-width: 600px; }
+        }
+        @media (max-width: 700px) {
+            .container { padding: 2px; }
+            .manual-table th, .manual-table td { font-size: 0.9em; }
+            .manual-table { min-width: 400px; }
         }
     </style>
 </head>
@@ -111,11 +131,16 @@
             <div class="error">{{ error }}</div>
         {% endif %}
         {% if forecast %}
-            <div class="forecast-result">
+            <table class="forecast-table">
+                <thead>
+                    <tr><th>Date</th><th>Forecast</th></tr>
+                </thead>
+                <tbody>
                 {% for month, f in forecast %}
-                    <span style="color:#185a9d">{{ month }}</span>: <span>{{ f|round(3) }}</span><br>
+                    <tr><td>{{ month }}</td><td>{{ f|round(3) }}</td></tr>
                 {% endfor %}
-            </div>
+                </tbody>
+            </table>
         {% endif %}
         <form method="post" enctype="multipart/form-data">
             <div class="upload-section">
@@ -124,6 +149,7 @@
                 <span style="color:#888;font-size:0.95em;">or enter values manually below</span>
             </div>
             <button class="submit-btn" type="submit">Forecast</button>
+            <div class="manual-table-wrapper">
             <table class="manual-table">
                 <thead>
                     <tr>
@@ -144,6 +170,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
         </form>
     </div>
 </body>
