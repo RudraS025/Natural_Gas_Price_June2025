@@ -27,15 +27,31 @@ def index():
             file = request.files['excel_file']
             try:
                 df = pd.read_excel(file)
-                # Only keep Month and FEATURES columns
-                cols_needed = ['Month'] + FEATURES
-                df = df[[col for col in cols_needed if col in df.columns]]
-                if len(df) > 10:
-                    df = df.iloc[:10]
-                if not all(feat in df.columns for feat in FEATURES):
+                # Normalize column names (strip, lower, replace spaces)
+                df.columns = [str(col).strip().replace("  ", " ").replace(" ", "_").replace("-", "_") for col in df.columns]
+                # Map expected features to uploaded columns
+                feature_map = {}
+                for feat in FEATURES:
+                    for col in df.columns:
+                        if feat.replace(" ", "_").lower() == col.lower():
+                            feature_map[feat] = col
+                            break
+                if len(feature_map) != len(FEATURES):
                     error = f"Excel file must contain columns: {', '.join(FEATURES)}"
                 else:
+                    # Only keep Month and mapped features
+                    cols_needed = ['Month'] + [feature_map[feat] for feat in FEATURES]
+                    if 'Month' not in df.columns:
+                        # Try to find a column that matches 'Month' (case-insensitive)
+                        for col in df.columns:
+                            if col.lower() == 'month':
+                                df.rename(columns={col: 'Month'}, inplace=True)
+                                break
+                    df = df[cols_needed]
+                    if len(df) > 10:
+                        df = df.iloc[:10]
                     input_df = df.copy()
+                    input_df.columns = ['Month'] + FEATURES
             except Exception as e:
                 error = f"Error reading Excel file: {e}"
         else:
@@ -58,7 +74,11 @@ def index():
         if input_df is not None and error is None:
             try:
                 X_pred = input_df[FEATURES]
-                X_pred_scaled = scaler.transform(X_pred)
+                # Fix for single-row input (reshape if needed)
+                if X_pred.shape[0] == 1:
+                    X_pred_scaled = scaler.transform(X_pred.values.reshape(1, -1))
+                else:
+                    X_pred_scaled = scaler.transform(X_pred)
                 preds = model.predict(X_pred_scaled)
                 forecast = list(zip(input_df['Month'], preds))
             except Exception as e:

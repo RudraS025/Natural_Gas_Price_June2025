@@ -12,16 +12,11 @@ original_df = pd.read_excel('NaturalGasDemand_Input.xlsx', engine='openpyxl')
 original_df['Month'] = pd.to_datetime(original_df['Month'])
 original_df.set_index('Month', inplace=True)
 
-# Add time features
-original_df['Year'] = original_df.index.year
-original_df['Month_num'] = original_df.index.month
-original_df['Quarter'] = original_df.index.quarter
-# Optionally, add cyclical encoding for month
-original_df['Month_sin'] = np.sin(2 * np.pi * original_df['Month_num'] / 12)
-original_df['Month_cos'] = np.cos(2 * np.pi * original_df['Month_num'] / 12)
-
+# Only use original independent variables (no time features)
+# Columns: ['Steel', 'Petroleum Refinery', 'Fertilizers', 'Total Index', 'Fertilizers.1', 'Power']
+independent_vars = ['Steel', 'Petroleum Refinery', 'Fertilizers', 'Total Index', 'Fertilizers.1', 'Power']
 target_col = 'India total Consumption of Natural Gas (in BCM)'
-X = original_df.drop(columns=[target_col])
+X = original_df[independent_vars]
 y = original_df[target_col]
 
 # Train-test split (no shuffle)
