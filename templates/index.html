@@ -14,99 +14,136 @@
             padding: 0;
         }
         .container {
-            max-width: 900px;
-            margin: 40px auto;
+            max-width: 600px;
+            margin: 32px auto;
             background: #fff;
             border-radius: 16px;
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
-            padding: 40px 32px 32px 32px;
+            padding: 28px 18px 18px 18px;
         }
         h1 {
             text-align: center;
-            color: #2d3a4b;
-            margin-bottom: 24px;
+            color: #185a9d;
+            margin-bottom: 18px;
         }
         .forecast-result {
             background: #e3fcec;
             color: #1b5e20;
             border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 24px;
-            font-size: 1.3em;
+            padding: 12px;
+            margin-bottom: 18px;
+            font-size: 1.1em;
             text-align: center;
             font-weight: bold;
         }
-        form {
+        .error {
+            background: #ffeaea;
+            color: #b71c1c;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 18px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .upload-section {
             display: flex;
             flex-direction: column;
-            gap: 24px;
-        }
-        .future-row {
-            display: flex;
-            gap: 16px;
             align-items: center;
-            background: #f7fafd;
-            border-radius: 8px;
-            padding: 12px 8px;
+            margin-bottom: 18px;
         }
-        .future-row label {
-            min-width: 120px;
+        .upload-section label {
             font-weight: 500;
+            color: #185a9d;
+            margin-bottom: 6px;
         }
-        .future-row input[type="date"],
-        .future-row input[type="number"] {
-            padding: 6px 10px;
-            border: 1px solid #b0bec5;
-            border-radius: 4px;
-            font-size: 1em;
-            width: 120px;
-        }
-        .future-row .date-label {
-            min-width: 80px;
+        .upload-section input[type="file"] {
+            margin-bottom: 8px;
         }
         .submit-btn {
             background: linear-gradient(90deg, #43cea2, #185a9d);
             color: #fff;
             border: none;
             border-radius: 6px;
-            padding: 14px 0;
+            padding: 12px 0;
             font-size: 1.1em;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 16px;
+            margin-bottom: 18px;
+            width: 100%;
             transition: background 0.2s;
         }
         .submit-btn:hover {
             background: linear-gradient(90deg, #185a9d, #43cea2);
         }
+        .manual-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 18px;
+        }
+        .manual-table th, .manual-table td {
+            border: 1px solid #b0bec5;
+            padding: 6px 4px;
+            text-align: center;
+            font-size: 0.98em;
+        }
+        .manual-table th {
+            background: #e0eafc;
+            color: #185a9d;
+        }
+        .manual-table input[type="date"],
+        .manual-table input[type="number"] {
+            width: 90px;
+            padding: 4px 6px;
+            border: 1px solid #b0bec5;
+            border-radius: 4px;
+            font-size: 0.98em;
+        }
         @media (max-width: 700px) {
-            .container { padding: 16px; }
-            .future-row { flex-direction: column; gap: 8px; }
+            .container { padding: 8px; }
+            .manual-table th, .manual-table td { font-size: 0.92em; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Natural Gas Demand Forecast</h1>
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
         {% if forecast %}
             <div class="forecast-result">
-                {% for f in forecast %}
-                    Forecasted Value: <span>{{ f|round(3) }}</span><br>
+                {% for month, f in forecast %}
+                    <span style="color:#185a9d">{{ month }}</span>: <span>{{ f|round(3) }}</span><br>
                 {% endfor %}
             </div>
         {% endif %}
-        <form method="post">
-            {% for i in range(10) %}
-            <div class="future-row">
-                <label class="date-label">Date:</label>
-                <input type="date" name="date_{{i}}" required="{{ i == 0 }}">
-                {% for feat in features %}
-                    <label>{{ feat }}:</label>
-                    <input type="number" step="any" name="{{ feat }}_{{i}}" required="{{ i == 0 }}">
-                {% endfor %}
+        <form method="post" enctype="multipart/form-data">
+            <div class="upload-section">
+                <label for="excel_file">Upload Excel file (max 10 rows, must include Month and all variables):</label>
+                <input type="file" name="excel_file" id="excel_file" accept=".xlsx,.xls">
+                <span style="color:#888;font-size:0.95em;">or enter values manually below</span>
             </div>
-            {% endfor %}
             <button class="submit-btn" type="submit">Forecast</button>
+            <table class="manual-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        {% for feat in features %}
+                            <th>{{ feat }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for i in range(10) %}
+                    <tr>
+                        <td><input type="date" name="date_{{i}}"></td>
+                        {% for feat in features %}
+                            <td><input type="number" step="any" name="{{ feat }}_{{i}}"></td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </form>
     </div>
 </body>

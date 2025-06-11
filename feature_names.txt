@@ -4,8 +4,3 @@ Fertilizers
 Total Index
 Fertilizers.1
 Power
-Year
-Month_num
-Quarter
-Month_sin
-Month_cos
