@@ -151,11 +151,10 @@
             {% if preview %}
                 <div class="error" style="background:#fffde7;color:#bfa100;">Excel values loaded. Please review/edit below and click Forecast.</div>
             {% endif %}
-            {% if not preview %}
-                <button class="submit-btn" type="submit">Forecast</button>
-            {% else %}
-                <button class="submit-btn" type="submit" formaction="/">Forecast</button>
-            {% endif %}
+            <div style="display:flex;gap:10px;justify-content:center;margin-bottom:10px;">
+                <button class="submit-btn" type="submit" name="action" value="preview">Preview Excel</button>
+                <button class="submit-btn" type="submit" name="action" value="forecast">Forecast</button>
+            </div>
             <div class="manual-table-wrapper">
             <table class="manual-table">
                 <thead>

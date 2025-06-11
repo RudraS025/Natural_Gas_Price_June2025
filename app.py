@@ -16,6 +16,17 @@ scaler = joblib.load(SCALER_PATH)
 with open('feature_names.txt') as f:
     FEATURES = [line.strip() for line in f if line.strip()]
 
+def excel_date_to_str(val):
+    # Convert Excel/Excel string/Excel Timestamp to YYYY-MM-DD for HTML date input
+    if pd.isnull(val):
+        return ''
+    if isinstance(val, pd.Timestamp):
+        return val.strftime('%Y-%m-%d')
+    try:
+        return pd.to_datetime(val).strftime('%Y-%m-%d')
+    except Exception:
+        return str(val)
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     forecast = None
@@ -25,8 +36,9 @@ def index():
     input_dates = [None for _ in range(10)]
     preview = False
     if request.method == 'POST':
-        # If Excel file uploaded, just preview (do not forecast yet)
-        if 'excel_file' in request.files and request.files['excel_file'].filename:
+        action = request.form.get('action', 'preview')
+        # Excel upload: preview mode
+        if 'excel_file' in request.files and request.files['excel_file'].filename and action == 'preview':
             file = request.files['excel_file']
             try:
                 df = pd.read_excel(file)
@@ -54,20 +66,20 @@ def index():
                     input_df.columns = ['Month'] + FEATURES
                     for i, row in input_df.iterrows():
                         if i < 10:
-                            input_dates[i] = row['Month'] if pd.notnull(row['Month']) else None
+                            input_dates[i] = excel_date_to_str(row['Month'])
                             for j, feat in enumerate(FEATURES):
                                 input_values[i][j] = row[feat] if pd.notnull(row[feat]) else None
                     preview = True
             except Exception as e:
                 error = f"Error reading Excel file: {e}"
         else:
-            # If forecast button clicked, use manual entry or pre-filled values
+            # Forecast action: use manual entry or pre-filled values
             input_data = []
             months = []
             for i in range(10):
-                row = []
                 month_val = request.form.get(f'date_{i}')
                 months.append(month_val)
+                row = []
                 for feat in FEATURES:
                     val = request.form.get(f'{feat}_{i}', type=float)
                     row.append(val)
