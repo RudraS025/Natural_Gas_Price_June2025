@@ -148,7 +148,14 @@
                 <input type="file" name="excel_file" id="excel_file" accept=".xlsx,.xls">
                 <span style="color:#888;font-size:0.95em;">or enter values manually below</span>
             </div>
-            <button class="submit-btn" type="submit">Forecast</button>
+            {% if preview %}
+                <div class="error" style="background:#fffde7;color:#bfa100;">Excel values loaded. Please review/edit below and click Forecast.</div>
+            {% endif %}
+            {% if not preview %}
+                <button class="submit-btn" type="submit">Forecast</button>
+            {% else %}
+                <button class="submit-btn" type="submit" formaction="/">Forecast</button>
+            {% endif %}
             <div class="manual-table-wrapper">
             <table class="manual-table">
                 <thead>
