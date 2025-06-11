@@ -74,12 +74,19 @@ def index():
         if input_df is not None and error is None:
             try:
                 X_pred = input_df[FEATURES]
-                # Fix for single-row input (reshape if needed)
+                # Ensure always 2D
                 if X_pred.shape[0] == 1:
                     X_pred_scaled = scaler.transform(X_pred.values.reshape(1, -1))
                 else:
                     X_pred_scaled = scaler.transform(X_pred)
-                preds = model.predict(X_pred_scaled)
+                # XGBoost bug workaround: use predict with validate_features=False
+                try:
+                    preds = model.predict(X_pred_scaled, validate_features=False)
+                except Exception:
+                    # fallback for older xgboost/joblib: use get_booster().predict
+                    import xgboost as xgb
+                    dmatrix = xgb.DMatrix(X_pred_scaled)
+                    preds = model.get_booster().predict(dmatrix)
                 forecast = list(zip(input_df['Month'], preds))
             except Exception as e:
                 error = f"Error during forecasting: {e}"
