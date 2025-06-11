@@ -1,0 +1,8 @@
+pandas
+numpy
+scikit-learn
+openpyxl
+flask
+gunicorn
+joblib
+xgboost==1.7.6

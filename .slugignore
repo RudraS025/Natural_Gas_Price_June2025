@@ -1,0 +1,29 @@
+# Exclude large and unnecessary files from Heroku slug
+*.xlsx
+*.png
+*.h5
+*.pkl
+*.csv
+*.ipynb
+*.xls
+*.xlsm
+*.xlsb
+*.sav
+*.npy
+*.npz
+*.joblib
+*.pdf
+*.docx
+*.pptx
+*.md
+train_and_forecast.py
+save_scaler.py
+rf_test_vs_prediction_results.xlsx
+rf_test_vs_prediction.png
+test_vs_prediction_results.xlsx
+test_vs_prediction.png
+xgb_test_vs_prediction_results.xlsx
+xgb_test_vs_prediction.png
+NaturalGasDemand_Input.xlsx
+NaturalGasDemand_Future_Input.xlsx
+# requirements.txt must NOT be excluded!
