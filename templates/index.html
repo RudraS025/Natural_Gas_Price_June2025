@@ -162,9 +162,9 @@
                 <tbody>
                     {% for i in range(10) %}
                     <tr>
-                        <td><input type="date" name="date_{{i}}"></td>
-                        {% for feat in features %}
-                            <td><input type="number" step="any" name="{{ feat }}_{{i}}"></td>
+                        <td><input type="date" name="date_{{i}}" value="{{ input_dates[i]|default('') }}"></td>
+                        {% for j in range(features|length) %}
+                            <td><input type="number" step="any" name="{{ features[j] }}_{{i}}" value="{{ input_values[i][j]|default('') }}"></td>
                         {% endfor %}
                     </tr>
                     {% endfor %}

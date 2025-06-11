@@ -21,6 +21,8 @@ def index():
     forecast = None
     error = None
     input_df = None
+    input_values = [[None for _ in FEATURES] for _ in range(10)]
+    input_dates = [None for _ in range(10)]
     if request.method == 'POST':
         # Handle Excel upload
         if 'excel_file' in request.files and request.files['excel_file'].filename:
@@ -53,6 +55,12 @@ def index():
                         df = df.iloc[:10]
                     input_df = df.copy()
                     input_df.columns = ['Month'] + FEATURES
+                    # Prepare values for pre-filling manual entry
+                    for i, row in input_df.iterrows():
+                        if i < 10:
+                            input_dates[i] = row['Month'] if pd.notnull(row['Month']) else None
+                            for j, feat in enumerate(FEATURES):
+                                input_values[i][j] = row[feat] if pd.notnull(row[feat]) else None
             except Exception as e:
                 error = f"Error reading Excel file: {e}"
         else:
@@ -68,6 +76,10 @@ def index():
                     row.append(val)
                 if any([v is not None for v in row]) and month_val:
                     input_data.append(row)
+                # For pre-filling
+                input_dates[i] = month_val
+                for j, v in enumerate(row):
+                    input_values[i][j] = v
             if input_data:
                 input_df = pd.DataFrame(input_data, columns=FEATURES)
                 input_df['Month'] = months[:len(input_df)]
@@ -90,7 +102,7 @@ def index():
                 forecast = list(zip(input_df['Month'], preds))
             except Exception as e:
                 error = f"Error during forecasting: {e}"
-    return render_template('index.html', features=FEATURES, forecast=forecast, error=error)
+    return render_template('index.html', features=FEATURES, forecast=forecast, error=error, input_values=input_values, input_dates=input_dates)
 
 if __name__ == '__main__':
     app.run(debug=True)
