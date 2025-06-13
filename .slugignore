@@ -27,3 +27,5 @@ NaturalGasDemand_Input.xlsx
 NaturalGasDemand_Future_Input.xlsx
 # requirements.txt must NOT be excluded!
 # DO NOT exclude .pkl or .save files so models are included in slug
+# EXCEPTION: Do NOT exclude last_actuals.csv, needed for Heroku app
+!last_actuals.csv
