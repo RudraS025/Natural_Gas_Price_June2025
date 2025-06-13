@@ -126,22 +126,31 @@
 </head>
 <body>
     <div class="container">
-        <h1>Natural Gas Demand Forecast</h1>
+        <h1>Natural Gas Demand Forecast based on Fundamental Factors</h1>
         {% if error %}
             <div class="error">{{ error }}</div>
         {% endif %}
-        {% if forecast %}
-            <table class="forecast-table">
-                <thead>
-                    <tr><th>Date</th><th>Forecast</th></tr>
-                </thead>
-                <tbody>
-                {% for month, f in forecast %}
-                    <tr><td>{{ month }}</td><td>{{ f|round(3) }}</td></tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        {% endif %}
+        <div style="display:flex;gap:24px;align-items:flex-start;justify-content:center;flex-wrap:wrap;">
+            {% if forecast %}
+            <div style="flex:1 1 320px;max-width:420px;min-width:220px;">
+                <table class="forecast-table">
+                    <thead>
+                        <tr><th>Date</th><th>Forecast - India total Consumption of Natural Gas (in BCM)</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for month, f in forecast %}
+                        <tr><td>{{ month }}</td><td>{{ f|round(3) }}</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+            {% if chart_data %}
+            <div style="flex:1 1 320px;max-width:520px;min-width:220px;">
+                <canvas id="forecastChart" height="220"></canvas>
+            </div>
+            {% endif %}
+        </div>
         <form method="post" enctype="multipart/form-data">
             <div class="upload-section">
                 <label for="excel_file">Upload Excel file (max 10 rows, must include Month and all variables):</label>
@@ -179,5 +188,57 @@
             </div>
         </form>
     </div>
+    {% if chart_data %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="text/javascript">
+        var actualMonths = JSON.parse('{{ chart_data.actual_months|tojson|safe }}');
+        var actualValues = JSON.parse('{{ chart_data.actual_values|tojson|safe }}');
+        var forecastMonths = JSON.parse('{{ chart_data.forecast_months|tojson|safe }}');
+        var forecastValues = JSON.parse('{{ chart_data.forecast_values|tojson|safe }}');
+        var allLabels = actualMonths.concat(forecastMonths);
+        var allData = actualValues.concat(Array(forecastValues.length).fill(null));
+        var forecastData = Array(actualValues.length).fill(null).concat(forecastValues);
+        new Chart(document.getElementById('forecastChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: allLabels,
+                datasets: [
+                    {
+                        label: 'Actual',
+                        data: allData,
+                        borderColor: '#185a9d',
+                        backgroundColor: 'rgba(24,90,157,0.08)',
+                        tension: 0.18,
+                        pointRadius: 2,
+                        borderWidth: 2,
+                        spanGaps: true
+                    },
+                    {
+                        label: 'Forecast',
+                        data: forecastData,
+                        borderColor: '#43cea2',
+                        backgroundColor: 'rgba(67,206,162,0.08)',
+                        borderDash: [6,4],
+                        tension: 0.18,
+                        pointRadius: 2,
+                        borderWidth: 2,
+                        spanGaps: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: true, position: 'top' },
+                    title: { display: false }
+                },
+                scales: {
+                    x: { title: { display: true, text: 'Month' } },
+                    y: { title: { display: true, text: 'India total Consumption of Natural Gas (in BCM)' } }
+                }
+            }
+        });
+    </script>
+    {% endif %}
 </body>
 </html>
