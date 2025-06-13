@@ -151,9 +151,11 @@ def index():
                     new_row = {'Month': pd.to_datetime(row['Month']), history.columns[-1]: y_pred}
                     history = pd.concat([history, pd.DataFrame([new_row])], ignore_index=True)
                 forecast = list(zip(input_df['Month'], preds))
-                # Prepare chart data: last 15 actuals + forecast, and connect last actual to first forecast
+                # Prepare chart data: last 15 non-NaN actuals + forecast, and connect last actual to first forecast
                 full_actuals = last_actuals_df[['Month', last_actuals_df.columns[-1]]].copy()
-                last_15_actuals = full_actuals.tail(15)
+                # Only keep rows with non-NaN values for the target
+                valid_actuals = full_actuals.dropna(subset=[full_actuals.columns[-1]])
+                last_15_actuals = valid_actuals.tail(15)
                 # Connect last actual to first forecast for smooth line
                 if len(forecast) > 0 and len(last_15_actuals) > 0:
                     forecast_months = [str(m)[:10] for m, _ in forecast]
