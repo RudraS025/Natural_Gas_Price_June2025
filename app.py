@@ -11,12 +11,14 @@ app = Flask(__name__)
 MODEL_PATH = 'natural_gas_xgb_model.pkl'
 SCALER_PATH = 'scaler.save'
 model = joblib.load(MODEL_PATH)
-# Robust patch for XGBoost 'gpu_id' and similar attribute errors
+# Final robust patch: forcibly ignore all AttributeErrors from XGBoost model
 try:
     if isinstance(model, xgb.XGBModel):
         for attr in ['gpu_id', '_gpu_id', 'n_gpus', '_n_gpus']:
             try:
                 delattr(model, attr)
+            except AttributeError:
+                pass
             except Exception:
                 pass
 except Exception:
