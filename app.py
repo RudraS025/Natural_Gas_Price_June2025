@@ -42,12 +42,18 @@ def excel_date_to_str(val):
     except Exception:
         return str(val)
 
+# List of exogenous variables (no lag/roll/cyclical)
+EXOGENOUS_VARS = [
+    'Steel', 'Petroleum Refinery', 'Fertilizers', 'Total Index', 'Fertilizers.1', 'Power'
+]
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     forecast = None
     error = None
     input_df = None
-    input_values = [[None for _ in FEATURES] for _ in range(10)]
+    # Only exogenous vars for manual/Excel entry
+    input_values = [[None for _ in EXOGENOUS_VARS] for _ in range(10)]
     input_dates = [None for _ in range(10)]
     preview = False
     if request.method == 'POST':
@@ -59,7 +65,7 @@ def index():
                 df = pd.read_excel(file)
                 df.columns = [str(col).strip().replace("  ", " ").replace(" ", "_").replace("-", "_").replace(".", "") for col in df.columns]
                 feature_map = {}
-                for feat in FEATURES:
+                for feat in EXOGENOUS_VARS:
                     feat_norm = feat.strip().replace(" ", "_").replace("-", "_").replace(".", "").lower()
                     for col in df.columns:
                         if feat_norm == col.lower():
@@ -70,19 +76,19 @@ def index():
                     if col.lower() == 'month':
                         month_col = col
                         break
-                if len(feature_map) != len(FEATURES) or not month_col:
-                    error = f"Excel file must contain columns: Month, {', '.join(FEATURES)}"
+                if len(feature_map) != len(EXOGENOUS_VARS) or not month_col:
+                    error = f"Excel file must contain columns: Month, {', '.join(EXOGENOUS_VARS)}"
                 else:
-                    cols_needed = [month_col] + [feature_map[feat] for feat in FEATURES]
+                    cols_needed = [month_col] + [feature_map[feat] for feat in EXOGENOUS_VARS]
                     df = df[cols_needed]
                     if len(df) > 10:
                         df = df.iloc[:10]
                     input_df = df.copy()
-                    input_df.columns = ['Month'] + FEATURES
+                    input_df.columns = ['Month'] + EXOGENOUS_VARS
                     for i, row in input_df.iterrows():
                         if i < 10:
                             input_dates[i] = excel_date_to_str(row['Month'])
-                            for j, feat in enumerate(FEATURES):
+                            for j, feat in enumerate(EXOGENOUS_VARS):
                                 input_values[i][j] = row[feat] if pd.notnull(row[feat]) else None
                     preview = True
             except Exception as e:
@@ -95,7 +101,7 @@ def index():
                 month_val = request.form.get(f'date_{i}')
                 months.append(month_val)
                 row = []
-                for feat in FEATURES:
+                for feat in EXOGENOUS_VARS:
                     val = request.form.get(f'{feat}_{i}', type=float)
                     row.append(val)
                 if any([v is not None for v in row]) and month_val:
@@ -104,52 +110,41 @@ def index():
                 for j, v in enumerate(row):
                     input_values[i][j] = v
             if input_data:
-                input_df = pd.DataFrame(input_data, columns=FEATURES)
+                input_df = pd.DataFrame(input_data, columns=EXOGENOUS_VARS)
                 input_df['Month'] = months[:len(input_df)]
-            if input_df is not None and error is None:
-                try:
-                    # --- Recursive Forecasting with Lag/Roll/Cyclical Features ---
-                    # Identify feature types
-                    lag_cols = [col for col in FEATURES if '_lag' in col]
-                    roll_cols = [col for col in FEATURES if '_roll' in col]
-                    cyc_cols = ['month_sin', 'month_cos']
-                    exog_cols = [col for col in FEATURES if col not in lag_cols + roll_cols + cyc_cols]
-                    # Prepare history for lags/rolls
-                    history = last_actuals_df.copy()
-                    preds = []
-                    for i in range(len(input_df)):
-                        row = input_df.iloc[i].copy()
-                        # Build feature vector for this step
-                        feat_row = {}
-                        # Exogenous variables (from user)
-                        for col in exog_cols:
-                            feat_row[col] = row.get(col, np.nan)
-                        # Lag features (from history)
-                        for lag_col in lag_cols:
-                            lag_n = int(lag_col.split('_lag')[-1])
-                            feat_row[lag_col] = history[target_col].iloc[-lag_n]
-                        # Rolling features (from history)
-                        for roll_col in roll_cols:
-                            roll_n = int(roll_col.split('_roll')[-1])
-                            feat_row[roll_col] = history[target_col].iloc[-roll_n:].mean()
-                        # Cyclical features (from date)
-                        month_sin, month_cos = get_month_cyclical_features(row['Month'])
-                        feat_row['month_sin'] = month_sin
-                        feat_row['month_cos'] = month_cos
-                        # Order features
-                        feat_vec = [feat_row[f] for f in FEATURES]
-                        # Scale
-                        feat_vec_scaled = scaler.transform([feat_vec])
-                        # Predict
-                        y_pred = model.predict(feat_vec_scaled)[0]
-                        preds.append(y_pred)
-                        # Update history for next step
-                        new_row = {'Month': pd.to_datetime(row['Month']), target_col: y_pred}
-                        history = pd.concat([history, pd.DataFrame([new_row])], ignore_index=True)
-                    forecast = list(zip(input_df['Month'], preds))
-                except Exception as e:
-                    error = f"Error during forecasting: {e}"
-    return render_template('index.html', features=FEATURES, forecast=forecast, error=error, input_values=input_values, input_dates=input_dates, preview=preview)
+        # --- Forecasting: use recursive feature generation for both Excel/manual ---
+        if input_df is not None and error is None:
+            try:
+                lag_cols = [col for col in FEATURES if '_lag' in col]
+                roll_cols = [col for col in FEATURES if '_roll' in col]
+                cyc_cols = ['month_sin', 'month_cos']
+                exog_cols = EXOGENOUS_VARS
+                history = last_actuals_df.copy()
+                preds = []
+                for i in range(len(input_df)):
+                    row = input_df.iloc[i].copy()
+                    feat_row = {}
+                    for col in exog_cols:
+                        feat_row[col] = row.get(col, np.nan)
+                    for lag_col in lag_cols:
+                        lag_n = int(lag_col.split('_lag')[-1])
+                        feat_row[lag_col] = history[history.columns[-1]].iloc[-lag_n]
+                    for roll_col in roll_cols:
+                        roll_n = int(roll_col.split('_roll')[-1])
+                        feat_row[roll_col] = history[history.columns[-1]].iloc[-roll_n:].mean()
+                    month_sin, month_cos = get_month_cyclical_features(row['Month'])
+                    feat_row['month_sin'] = month_sin
+                    feat_row['month_cos'] = month_cos
+                    feat_vec = [feat_row[f] for f in FEATURES]
+                    feat_vec_scaled = scaler.transform([feat_vec])
+                    y_pred = model.predict(feat_vec_scaled)[0]
+                    preds.append(y_pred)
+                    new_row = {'Month': pd.to_datetime(row['Month']), history.columns[-1]: y_pred}
+                    history = pd.concat([history, pd.DataFrame([new_row])], ignore_index=True)
+                forecast = list(zip(input_df['Month'], preds))
+            except Exception as e:
+                error = f"Error during forecasting: {e}"
+    return render_template('index.html', features=EXOGENOUS_VARS, forecast=forecast, error=error, input_values=input_values, input_dates=input_dates, preview=preview)
 
 if __name__ == '__main__':
     app.run(debug=True)
