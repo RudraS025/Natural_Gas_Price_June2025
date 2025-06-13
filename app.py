@@ -121,7 +121,7 @@ def index():
                 input_df = pd.DataFrame(input_data, columns=EXOGENOUS_VARS)
                 input_df['Month'] = months[:len(input_df)]
         # --- Forecasting: use recursive feature generation for both Excel/manual ---
-        if input_df is not None and error is None:
+        if input_df is not None and error is None and action == 'forecast':
             try:
                 lag_cols = [col for col in FEATURES if '_lag' in col]
                 roll_cols = [col for col in FEATURES if '_roll' in col]
