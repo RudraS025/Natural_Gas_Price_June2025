@@ -60,6 +60,7 @@ def index():
     forecast = None
     error = None
     input_df = None
+    chart_data = None  # For charting last 15 actuals + forecast
     # Only exogenous vars for manual/Excel entry
     input_values = [[None for _ in EXOGENOUS_VARS] for _ in range(10)]
     input_dates = [None for _ in range(10)]
@@ -150,9 +151,17 @@ def index():
                     new_row = {'Month': pd.to_datetime(row['Month']), history.columns[-1]: y_pred}
                     history = pd.concat([history, pd.DataFrame([new_row])], ignore_index=True)
                 forecast = list(zip(input_df['Month'], preds))
+                # Prepare chart data: last 15 actuals + forecast
+                last_actuals = last_actuals_df[['Month', last_actuals_df.columns[-1]]].tail(15)
+                chart_data = {
+                    'actual_months': last_actuals['Month'].dt.strftime('%Y-%m').tolist(),
+                    'actual_values': last_actuals[last_actuals.columns[-1]].tolist(),
+                    'forecast_months': [str(m)[:10] for m, _ in forecast],
+                    'forecast_values': [float(f) for _, f in forecast]
+                }
             except Exception as e:
                 error = f"Error during forecasting: {e}"
-    return render_template('index.html', features=EXOGENOUS_VARS, forecast=forecast, error=error, input_values=input_values, input_dates=input_dates, preview=preview)
+    return render_template('index.html', features=EXOGENOUS_VARS, forecast=forecast, error=error, input_values=input_values, input_dates=input_dates, preview=preview, chart_data=chart_data)
 
 if __name__ == '__main__':
     app.run(debug=True)

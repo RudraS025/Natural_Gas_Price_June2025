@@ -31,19 +31,27 @@
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 18px;
-            background: #e3fcec;
+            background: #f7fafc;
             border-radius: 8px;
             overflow: hidden;
+            font-size: 0.93em;
+            box-shadow: 0 2px 8px 0 rgba(31, 38, 135, 0.06);
         }
         .forecast-table th, .forecast-table td {
             border: 1px solid #b0bec5;
-            padding: 8px 6px;
+            padding: 6px 4px;
             text-align: center;
-            font-size: 1em;
+            font-size: 0.93em;
+            white-space: nowrap;
         }
         .forecast-table th {
-            background: #b2ebf2;
-            color: #185a9d;
+            background: #e3f2fd;
+            color: #1565c0;
+            font-weight: 600;
+        }
+        .forecast-table td {
+            color: #263238;
+            background: #f7fafc;
         }
         .error {
             background: #ffeaea;
@@ -139,7 +147,7 @@
                     </thead>
                     <tbody>
                     {% for month, f in forecast %}
-                        <tr><td>{{ month }}</td><td>{{ f|round(3) }}</td></tr>
+                        <tr><td style="white-space:nowrap;">{{ month }}</td><td>{{ f|round(3) }}</td></tr>
                     {% endfor %}
                     </tbody>
                 </table>
@@ -190,11 +198,20 @@
     </div>
     {% if chart_data %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script id="chart-data-json" type="application/json">
+        {
+            "actualMonths": {{ chart_data.actual_months|tojson|safe }},
+            "actualValues": {{ chart_data.actual_values|tojson|safe }},
+            "forecastMonths": {{ chart_data.forecast_months|tojson|safe }},
+            "forecastValues": {{ chart_data.forecast_values|tojson|safe }}
+        }
+    </script>
     <script type="text/javascript">
-        var actualMonths = JSON.parse('{{ chart_data.actual_months|tojson|safe }}');
-        var actualValues = JSON.parse('{{ chart_data.actual_values|tojson|safe }}');
-        var forecastMonths = JSON.parse('{{ chart_data.forecast_months|tojson|safe }}');
-        var forecastValues = JSON.parse('{{ chart_data.forecast_values|tojson|safe }}');
+        var chartData = JSON.parse(document.getElementById('chart-data-json').textContent);
+        var actualMonths = chartData.actualMonths;
+        var actualValues = chartData.actualValues;
+        var forecastMonths = chartData.forecastMonths;
+        var forecastValues = chartData.forecastValues;
         var allLabels = actualMonths.concat(forecastMonths);
         var allData = actualValues.concat(Array(forecastValues.length).fill(null));
         var forecastData = Array(actualValues.length).fill(null).concat(forecastValues);
