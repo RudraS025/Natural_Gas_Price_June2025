@@ -154,7 +154,7 @@
             </div>
             {% endif %}
             {% if chart_data %}
-            <div style="flex:1 1 320px;max-width:520px;min-width:220px;">
+            <div style="flex:1 1 320px;max-width:520px;min-width:220px;margin-left:40px;">
                 <canvas id="forecastChart" height="220"></canvas>
             </div>
             {% endif %}
@@ -212,9 +212,9 @@
         var actualValues = chartData.actualValues;
         var forecastMonths = chartData.forecastMonths;
         var forecastValues = chartData.forecastValues;
-        var allLabels = actualMonths.concat(forecastMonths);
-        var allData = actualValues.concat(Array(forecastValues.length).fill(null));
-        var forecastData = Array(actualValues.length).fill(null).concat(forecastValues);
+        var allLabels = actualMonths.concat(forecastMonths.slice(1)); // avoid duplicate month label
+        var allData = actualValues.concat(Array(forecastValues.length-1).fill(null));
+        var forecastData = Array(actualValues.length-1).fill(null).concat(forecastValues);
         new Chart(document.getElementById('forecastChart').getContext('2d'), {
             type: 'line',
             data: {
@@ -245,6 +245,7 @@
             },
             options: {
                 responsive: true,
+                layout: { padding: { left: 40 } },
                 plugins: {
                     legend: { display: true, position: 'top' },
                     title: { display: false }

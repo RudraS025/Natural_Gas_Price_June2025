@@ -151,13 +151,24 @@ def index():
                     new_row = {'Month': pd.to_datetime(row['Month']), history.columns[-1]: y_pred}
                     history = pd.concat([history, pd.DataFrame([new_row])], ignore_index=True)
                 forecast = list(zip(input_df['Month'], preds))
-                # Prepare chart data: last 15 actuals + forecast
-                last_actuals = last_actuals_df[['Month', last_actuals_df.columns[-1]]].tail(15)
+                # Prepare chart data: last 15 actuals + forecast, and connect last actual to first forecast
+                full_actuals = last_actuals_df[['Month', last_actuals_df.columns[-1]]].copy()
+                last_15_actuals = full_actuals.tail(15)
+                # Connect last actual to first forecast for smooth line
+                if len(forecast) > 0 and len(last_15_actuals) > 0:
+                    forecast_months = [str(m)[:10] for m, _ in forecast]
+                    forecast_values = [float(f) for _, f in forecast]
+                    # Insert the last actual value as the first forecast value
+                    forecast_months = [last_15_actuals['Month'].iloc[-1].strftime('%Y-%m')] + forecast_months
+                    forecast_values = [last_15_actuals[last_15_actuals.columns[-1]].iloc[-1]] + forecast_values
+                else:
+                    forecast_months = [str(m)[:10] for m, _ in forecast]
+                    forecast_values = [float(f) for _, f in forecast]
                 chart_data = {
-                    'actual_months': last_actuals['Month'].dt.strftime('%Y-%m').tolist(),
-                    'actual_values': last_actuals[last_actuals.columns[-1]].tolist(),
-                    'forecast_months': [str(m)[:10] for m, _ in forecast],
-                    'forecast_values': [float(f) for _, f in forecast]
+                    'actual_months': last_15_actuals['Month'].dt.strftime('%Y-%m').tolist(),
+                    'actual_values': last_15_actuals[last_15_actuals.columns[-1]].tolist(),
+                    'forecast_months': forecast_months,
+                    'forecast_values': forecast_values
                 }
             except Exception as e:
                 error = f"Error during forecasting: {e}"
