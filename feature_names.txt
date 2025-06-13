@@ -1,11 +1,13 @@
-Steel
-Petroleum Refinery
-Fertilizers
-Total Index
-Fertilizers.1
-Power
-India total Consumption of Natural Gas (in BCM)_lag1
-India total Consumption of Natural Gas (in BCM)_lag2
-India total Consumption of Natural Gas (in BCM)_roll3
+Production (in BCM)
+Residential Consumption
+Commercial Consumption
+Industrial Consumption
+Electric Power Consumption
+Other Consumption
+NG working underground storage (BCM) 
+Exports (in BCM)
+Henryhub NG prices (USD/MMBtu)_lag1
+Henryhub NG prices (USD/MMBtu)_lag2
+Henryhub NG prices (USD/MMBtu)_roll3
 month_sin
 month_cos

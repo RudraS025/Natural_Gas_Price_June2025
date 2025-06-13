@@ -8,14 +8,22 @@ import matplotlib.pyplot as plt
 import joblib
 
 # Load data
-original_df = pd.read_excel('NaturalGasDemand_Input.xlsx', engine='openpyxl')
+original_df = pd.read_excel('NaturalGasPrice_Input.xlsx', engine='openpyxl')
 original_df['Month'] = pd.to_datetime(original_df['Month'])
 original_df.set_index('Month', inplace=True)
 
-# Only use original independent variables (no time features)
-# Columns: ['Steel', 'Petroleum Refinery', 'Fertilizers', 'Total Index', 'Fertilizers.1', 'Power']
-independent_vars = ['Steel', 'Petroleum Refinery', 'Fertilizers', 'Total Index', 'Fertilizers.1', 'Power']
-target_col = 'India total Consumption of Natural Gas (in BCM)'
+# Set new independent variables and target
+independent_vars = [
+    'Production (in BCM)',
+    'Residential Consumption',
+    'Commercial Consumption',
+    'Industrial Consumption',
+    'Electric Power Consumption',
+    'Other Consumption',
+    'NG working underground storage (BCM) ',  # Trailing space restored
+    'Exports (in BCM)'
+]
+target_col = 'Henryhub NG prices (USD/MMBtu)'
 X = original_df[independent_vars]
 y = original_df[target_col]
 
@@ -32,7 +40,7 @@ X_test_scaled = scaler.transform(X_test)
 # Train Random Forest (basic)
 rf_model = RandomForestRegressor(n_estimators=200, random_state=42)
 rf_model.fit(X_train_scaled, y_train)
-joblib.dump(rf_model, 'natural_gas_rf_model.pkl')
+joblib.dump(rf_model, 'natural_gas_price_rf_model.pkl')
 rf_pred = rf_model.predict(X_test_scaled)
 rf_results = pd.DataFrame({'Month': y_test.index, 'Actual': y_test.values, 'Predicted': rf_pred})
 rf_results.to_excel('rf_test_vs_prediction_results.xlsx', index=False)
@@ -90,7 +98,7 @@ X_test_scaled = scaler.transform(X_test)
 # Train XGBoost (with features)
 xgb_model = xgb.XGBRegressor(n_estimators=300, random_state=42)
 xgb_model.fit(X_train_scaled, y_train)
-joblib.dump(xgb_model, 'natural_gas_xgb_model.pkl')
+joblib.dump(xgb_model, 'natural_gas_price_xgb_model.pkl')
 xgb_pred = xgb_model.predict(X_test_scaled)
 xgb_results = pd.DataFrame({'Month': y_test.index, 'Actual': y_test.values, 'Predicted': xgb_pred})
 xgb_results.to_excel('xgb_test_vs_prediction_results.xlsx', index=False)

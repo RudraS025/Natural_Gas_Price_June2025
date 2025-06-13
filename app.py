@@ -8,7 +8,7 @@ import xgboost as xgb
 app = Flask(__name__)
 
 # Load model and scaler
-MODEL_PATH = 'natural_gas_xgb_model.pkl'
+MODEL_PATH = 'natural_gas_price_xgb_model.pkl'
 SCALER_PATH = 'scaler.save'
 model = joblib.load(MODEL_PATH)
 # Final bulletproof patch: monkey-patch gpu_id property if missing
@@ -29,7 +29,7 @@ LAST_ACTUALS_PATH = 'last_actuals.csv'
 last_actuals_df = pd.read_csv(LAST_ACTUALS_PATH, parse_dates=['Month'])
 
 # Define target column name (must match training script)
-target_col = 'India total Consumption of Natural Gas (in BCM)'
+target_col = 'Henryhub NG prices (USD/MMBtu)'
 
 # Helper to get cyclical month features
 def get_month_cyclical_features(date_str):
@@ -52,7 +52,14 @@ def excel_date_to_str(val):
 
 # List of exogenous variables (no lag/roll/cyclical)
 EXOGENOUS_VARS = [
-    'Steel', 'Petroleum Refinery', 'Fertilizers', 'Total Index', 'Fertilizers.1', 'Power'
+    'Production (in BCM)',
+    'Residential Consumption',
+    'Commercial Consumption',
+    'Industrial Consumption',
+    'Electric Power Consumption',
+    'Other Consumption',
+    'NG working underground storage (BCM)',  # No trailing space
+    'Exports (in BCM)'
 ]
 
 @app.route('/', methods=['GET', 'POST'])
@@ -72,12 +79,12 @@ def index():
             file = request.files['excel_file']
             try:
                 df = pd.read_excel(file)
-                df.columns = [str(col).strip().replace("  ", " ").replace(" ", "_").replace("-", "_").replace(".", "") for col in df.columns]
+                # Strip whitespace from all column names
+                df.columns = [str(col).strip() for col in df.columns]
                 feature_map = {}
                 for feat in EXOGENOUS_VARS:
-                    feat_norm = feat.strip().replace(" ", "_").replace("-", "_").replace(".", "").lower()
                     for col in df.columns:
-                        if feat_norm == col.lower():
+                        if feat == col:
                             feature_map[feat] = col
                             break
                 month_col = None
@@ -124,6 +131,8 @@ def index():
         # --- Forecasting: use recursive feature generation for both Excel/manual ---
         if input_df is not None and error is None and action == 'forecast':
             try:
+                # Strip whitespace from DataFrame columns to match model features
+                input_df.columns = [str(col).strip() for col in input_df.columns]
                 lag_cols = [col for col in FEATURES if '_lag' in col]
                 roll_cols = [col for col in FEATURES if '_roll' in col]
                 cyc_cols = ['month_sin', 'month_cos']

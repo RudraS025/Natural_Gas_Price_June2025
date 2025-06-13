@@ -134,7 +134,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Natural Gas Demand Forecast based on Fundamental Factors</h1>
+        <h1>Henry Hub Natural Gas Price Forecast based on Fundamental Factors</h1>
         {% if error %}
             <div class="error">{{ error }}</div>
         {% endif %}
@@ -143,7 +143,7 @@
             <div style="flex:1 1 320px;max-width:420px;min-width:220px;">
                 <table class="forecast-table">
                     <thead>
-                        <tr><th>Date</th><th>Forecast - India total Consumption of Natural Gas (in BCM)</th></tr>
+                        <tr><th>Date</th><th>Forecast - Henryhub NG prices (USD/MMBtu)</th></tr>
                     </thead>
                     <tbody>
                     {% for month, f in forecast %}
@@ -252,7 +252,7 @@
                 },
                 scales: {
                     x: { title: { display: true, text: 'Month' } },
-                    y: { title: { display: true, text: 'India total Consumption of Natural Gas (in BCM)' } }
+                    y: { title: { display: true, text: 'Henryhub NG prices (USD/MMBtu)' } }
                 }
             }
         });
