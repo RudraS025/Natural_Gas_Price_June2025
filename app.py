@@ -10,6 +10,12 @@ app = Flask(__name__)
 MODEL_PATH = 'natural_gas_xgb_model.pkl'
 SCALER_PATH = 'scaler.save'
 model = joblib.load(MODEL_PATH)
+# Patch for XGBoost 'gpu_id' attribute error
+if hasattr(model, 'gpu_id'):
+    try:
+        delattr(model, 'gpu_id')
+    except Exception:
+        pass
 scaler = joblib.load(SCALER_PATH)
 
 # Load feature names from file
