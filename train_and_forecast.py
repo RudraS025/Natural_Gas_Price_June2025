@@ -47,8 +47,48 @@ plt.tight_layout()
 plt.savefig('rf_test_vs_prediction.png')
 plt.close()
 
-# Train XGBoost (basic)
-xgb_model = xgb.XGBRegressor(n_estimators=200, random_state=42)
+# --- Feature Engineering: Lag, Rolling, Cyclical ---
+LAGS = [1, 2]
+ROLLS = [3]
+
+df = original_df.copy()
+# Lag features for target
+target_lag_cols = []
+for lag in LAGS:
+    col = f'{target_col}_lag{lag}'
+    df[col] = df[target_col].shift(lag)
+    target_lag_cols.append(col)
+# Rolling mean features for target
+roll_cols = []
+for roll in ROLLS:
+    col = f'{target_col}_roll{roll}'
+    df[col] = df[target_col].rolling(roll).mean().shift(1)
+    roll_cols.append(col)
+# Cyclical month features
+df['month'] = df.index.month
+df['month_sin'] = np.sin(2 * np.pi * df['month'] / 12)
+df['month_cos'] = np.cos(2 * np.pi * df['month'] / 12)
+
+# Drop rows with NA (from lag/rolling)
+df = df.dropna().copy()
+
+# New feature list
+feature_cols = independent_vars + target_lag_cols + roll_cols + ['month_sin', 'month_cos']
+X = df[feature_cols]
+y = df[target_col]
+
+# Train-test split (no shuffle)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+
+# Standardization
+scaler = StandardScaler()
+scaler.fit(X_train)
+joblib.dump(scaler, 'scaler.save')
+X_train_scaled = scaler.transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Train XGBoost (with features)
+xgb_model = xgb.XGBRegressor(n_estimators=300, random_state=42)
 xgb_model.fit(X_train_scaled, y_train)
 joblib.dump(xgb_model, 'natural_gas_xgb_model.pkl')
 xgb_pred = xgb_model.predict(X_test_scaled)
@@ -58,7 +98,7 @@ plt.figure(figsize=(10,6))
 plt.plot(y_test.index, y_test, label='Actual')
 plt.plot(y_test.index, xgb_pred, label='XGB Predicted')
 plt.legend()
-plt.title('XGBoost: Test vs Prediction (No Feature Engineering)')
+plt.title('XGBoost: Test vs Prediction (Lag/Roll/Cyclical Features)')
 plt.xlabel('Month')
 plt.ylabel(target_col)
 plt.tight_layout()
@@ -67,7 +107,12 @@ plt.close()
 
 # Save feature names for Flask app
 with open('feature_names.txt', 'w') as f:
-    for col in X_train.columns:
+    for col in feature_cols:
         f.write(f"{col}\n")
 
-print('Baseline models (RF, XGB) trained and results saved.')
+# Save last N months of actuals for recursive forecasting
+N = max(LAGS + ROLLS)
+last_actuals = df.iloc[-N:][[target_col]].copy()
+last_actuals.to_csv('last_actuals.csv')
+
+print('XGBoost with lag/rolling/cyclical features trained and results saved.')

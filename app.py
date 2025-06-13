@@ -16,6 +16,21 @@ scaler = joblib.load(SCALER_PATH)
 with open('feature_names.txt') as f:
     FEATURES = [line.strip() for line in f if line.strip()]
 
+# Load last N actuals for recursive forecasting
+LAST_ACTUALS_PATH = 'last_actuals.csv'
+last_actuals_df = pd.read_csv(LAST_ACTUALS_PATH, parse_dates=['Month'])
+
+# Define target column name (must match training script)
+target_col = 'India total Consumption of Natural Gas (in BCM)'
+
+# Helper to get cyclical month features
+def get_month_cyclical_features(date_str):
+    dt = pd.to_datetime(date_str)
+    month = dt.month
+    month_sin = np.sin(2 * np.pi * month / 12)
+    month_cos = np.cos(2 * np.pi * month / 12)
+    return month_sin, month_cos
+
 def excel_date_to_str(val):
     # Convert Excel/Excel string/Excel Timestamp to YYYY-MM-DD for HTML date input
     if pd.isnull(val):
@@ -93,17 +108,44 @@ def index():
                 input_df['Month'] = months[:len(input_df)]
             if input_df is not None and error is None:
                 try:
-                    X_pred = input_df[FEATURES]
-                    if X_pred.shape[0] == 1:
-                        X_pred_scaled = scaler.transform(X_pred.values.reshape(1, -1))
-                    else:
-                        X_pred_scaled = scaler.transform(X_pred)
-                    try:
-                        preds = model.predict(X_pred_scaled, validate_features=False)
-                    except Exception:
-                        import xgboost as xgb
-                        dmatrix = xgb.DMatrix(X_pred_scaled)
-                        preds = model.get_booster().predict(dmatrix)
+                    # --- Recursive Forecasting with Lag/Roll/Cyclical Features ---
+                    # Identify feature types
+                    lag_cols = [col for col in FEATURES if '_lag' in col]
+                    roll_cols = [col for col in FEATURES if '_roll' in col]
+                    cyc_cols = ['month_sin', 'month_cos']
+                    exog_cols = [col for col in FEATURES if col not in lag_cols + roll_cols + cyc_cols]
+                    # Prepare history for lags/rolls
+                    history = last_actuals_df.copy()
+                    preds = []
+                    for i in range(len(input_df)):
+                        row = input_df.iloc[i].copy()
+                        # Build feature vector for this step
+                        feat_row = {}
+                        # Exogenous variables (from user)
+                        for col in exog_cols:
+                            feat_row[col] = row.get(col, np.nan)
+                        # Lag features (from history)
+                        for lag_col in lag_cols:
+                            lag_n = int(lag_col.split('_lag')[-1])
+                            feat_row[lag_col] = history[target_col].iloc[-lag_n]
+                        # Rolling features (from history)
+                        for roll_col in roll_cols:
+                            roll_n = int(roll_col.split('_roll')[-1])
+                            feat_row[roll_col] = history[target_col].iloc[-roll_n:].mean()
+                        # Cyclical features (from date)
+                        month_sin, month_cos = get_month_cyclical_features(row['Month'])
+                        feat_row['month_sin'] = month_sin
+                        feat_row['month_cos'] = month_cos
+                        # Order features
+                        feat_vec = [feat_row[f] for f in FEATURES]
+                        # Scale
+                        feat_vec_scaled = scaler.transform([feat_vec])
+                        # Predict
+                        y_pred = model.predict(feat_vec_scaled)[0]
+                        preds.append(y_pred)
+                        # Update history for next step
+                        new_row = {'Month': pd.to_datetime(row['Month']), target_col: y_pred}
+                        history = pd.concat([history, pd.DataFrame([new_row])], ignore_index=True)
                     forecast = list(zip(input_df['Month'], preds))
                 except Exception as e:
                     error = f"Error during forecasting: {e}"

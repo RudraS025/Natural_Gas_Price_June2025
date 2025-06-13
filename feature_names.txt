@@ -4,3 +4,8 @@ Fertilizers
 Total Index
 Fertilizers.1
 Power
+India total Consumption of Natural Gas (in BCM)_lag1
+India total Consumption of Natural Gas (in BCM)_lag2
+India total Consumption of Natural Gas (in BCM)_roll3
+month_sin
+month_cos
