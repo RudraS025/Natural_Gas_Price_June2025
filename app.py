@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import joblib
 import os
+import xgboost as xgb
 
 app = Flask(__name__)
 
@@ -11,12 +12,13 @@ MODEL_PATH = 'natural_gas_xgb_model.pkl'
 SCALER_PATH = 'scaler.save'
 model = joblib.load(MODEL_PATH)
 # Robust patch for XGBoost 'gpu_id' and similar attribute errors
-for attr in ['gpu_id', '_gpu_id', 'n_gpus', '_n_gpus']:
-    if hasattr(model, attr):
-        try:
-            delattr(model, attr)
-        except Exception:
-            pass
+if isinstance(model, xgb.XGBModel):
+    for attr in ['gpu_id', '_gpu_id', 'n_gpus', '_n_gpus']:
+        if hasattr(model, attr):
+            try:
+                delattr(model, attr)
+            except Exception:
+                pass
 scaler = joblib.load(SCALER_PATH)
 
 # Load feature names from file
