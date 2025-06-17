@@ -238,6 +238,10 @@ def index():
                     # Add a strong random shock every month
                     shock = np.random.normal(0, 0.35)
                     y_blend += shock
+                    # Prevent consecutive forecast values from being nearly identical (difference < 0.07)
+                    if len(preds) > 0 and abs(y_blend - preds[-1]) < 0.07:
+                        y_blend += np.random.uniform(0.09, 0.18) * (1 if np.random.rand() > 0.5 else -1)
+                        y_blend = float(np.clip(y_blend, 3.5, 5.0))
                     # Clamp strictly to 3.5–5.0
                     y_blend = float(np.clip(y_blend, 3.5, 5.0))
                     # If value is at a bound, force next value away from bound

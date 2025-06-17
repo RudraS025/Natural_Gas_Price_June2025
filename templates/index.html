@@ -191,7 +191,7 @@
                     <tr>
                         <td><input type="date" name="date_{{i}}" value="{{ input_dates[i]|default('') }}"></td>
                         {% for j in range(features|length) %}
-                            <td><input type="number" step="any" name="{{ features[j] }}_{{i}}" value="{{ input_values[i][j]|default('') }}"></td>
+                            <td><input type="number" step="any" name="{{ features[j] }}_{{i}}" value="{{ '%.2f'|format(input_values[i][j]) if input_values[i][j] is not none else '' }}"></td>
                         {% endfor %}
                     </tr>
                     {% endfor %}
@@ -259,8 +259,8 @@
                     y: {
                         title: { display: true, text: 'Henryhub NG prices (USD/MMBtu)' },
                         beginAtZero: false,
-                        min: 1,
-                        max: 5
+                        min: 2,
+                        max: 5.5
                     }
                 }
             }
