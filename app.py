@@ -140,20 +140,32 @@ def index():
                 exog_cols = EXOGENOUS_VARS
                 history = last_actuals_df.copy()
                 preds = []
+                # --- Seasonality and noise injection setup ---
+                # Use last 10 years of same-month values for seasonality
+                hist_months = history['Month'].dt.month.values
+                hist_prices = history[history.columns[-1]].values
+                # Build a dict: month -> list of historical prices for that month
+                month_hist = {}
+                for m, p in zip(hist_months, hist_prices):
+                    if m not in month_hist:
+                        month_hist[m] = []
+                    month_hist[m].append(p)
+                # Start AR(1) noise at 0
+                prev_noise = 0
+                noise_std = np.std(np.diff(hist_prices)[-24:]) if len(hist_prices) > 24 else 0.15
+                # Main recursive forecast loop
                 for i in range(len(input_df)):
                     row = input_df.iloc[i].copy()
                     feat_row = {}
                     for col in exog_cols:
                         feat_row[col] = row.get(col, np.nan)
                     for lag_col in lag_cols:
-                        # Only extract the number after '_lag' and ignore any other text
                         try:
                             lag_n = int(lag_col.split('_lag')[-1])
                         except Exception:
                             continue
                         feat_row[lag_col] = history[history.columns[-1]].iloc[-lag_n]
                     for roll_col in roll_cols:
-                        # Only extract the number after '_roll' and ignore any other text
                         try:
                             roll_n = int(roll_col.split('_roll')[-1])
                         except Exception:
@@ -165,8 +177,22 @@ def index():
                     feat_vec = [feat_row[f] if f in feat_row else 0 for f in FEATURES]
                     feat_vec_scaled = scaler.transform([feat_vec])
                     y_pred = model.predict(feat_vec_scaled)[0]
-                    preds.append(y_pred)
-                    new_row = {'Month': pd.to_datetime(row['Month']), history.columns[-1]: y_pred}
+                    # --- Inject historical seasonality and AR(1) noise ---
+                    forecast_month = pd.to_datetime(row['Month']).month
+                    # Historical mean for this month
+                    if forecast_month in month_hist and len(month_hist[forecast_month]) > 2:
+                        month_seasonal = np.mean(month_hist[forecast_month][-10:])
+                    else:
+                        month_seasonal = np.mean(hist_prices[-12:])
+                    # AR(1) noise: new_noise = 0.7*prev_noise + N(0, noise_std)
+                    new_noise = 0.7 * prev_noise + np.random.normal(0, noise_std)
+                    prev_noise = new_noise
+                    # Blend model, seasonality, and noise
+                    y_blend = 0.65 * y_pred + 0.3 * month_seasonal + 0.05 * new_noise
+                    # Clamp to plausible range
+                    y_blend = float(np.clip(y_blend, 1.5, 6.0))
+                    preds.append(y_blend)
+                    new_row = {'Month': pd.to_datetime(row['Month']), history.columns[-1]: y_blend}
                     history = pd.concat([history, pd.DataFrame([new_row])], ignore_index=True)
                 forecast = list(zip(input_df['Month'], preds))
                 # Prepare chart data: last 15 non-NaN actuals + forecast, and connect last actual to first forecast
