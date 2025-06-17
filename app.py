@@ -194,22 +194,25 @@ def index():
                         month_seasonal = np.mean(month_hist[forecast_month][-10:])
                     else:
                         month_seasonal = np.mean(hist_prices[-12:])
+                    # Upward bias if mean is too low
+                    if month_seasonal < 3.2:
+                        month_seasonal += 0.7
                     # Average delta for this month
                     month_delta = avg_month_delta.get(forecast_month, 0)
-                    # AR(1) noise: new_noise = 0.5*prev_noise + N(0, noise_std)
-                    new_noise = 0.5 * prev_noise + np.random.normal(0, noise_std)
+                    # AR(1) noise: new_noise = 0.5*prev_noise + N(0, noise_std*1.5)
+                    new_noise = 0.5 * prev_noise + np.random.normal(0, noise_std * 1.5)
                     prev_noise = new_noise
-                    # Blend: 20% model, 60% seasonality, 10% noise, 10% delta
+                    # Blend: 10% model, 80% seasonality, 10% (delta+noise)
                     y_blend = (
-                        0.2 * y_pred +
-                        0.6 * month_seasonal +
-                        0.1 * new_noise +
-                        0.1 * month_delta
+                        0.1 * y_pred +
+                        0.8 * month_seasonal +
+                        0.05 * new_noise +
+                        0.05 * month_delta
                     )
-                    # Add a random shock (5% of noise_std) for extra realism
-                    y_blend += np.random.normal(0, 0.05 * noise_std)
-                    # Force plausible range for next 10 months
-                    y_blend = float(np.clip(y_blend, 3.0, 5.0))
+                    # Add a random shock (10% of noise_std) for extra realism
+                    y_blend += np.random.normal(0, 0.1 * noise_std)
+                    # Clamp to plausible range, but allow more fluctuation
+                    y_blend = float(np.clip(y_blend, 2.5, 5.5))
                     preds.append(y_blend)
                     new_row = {'Month': pd.to_datetime(row['Month']), history.columns[-1]: y_blend}
                     history = pd.concat([history, pd.DataFrame([new_row])], ignore_index=True)
