@@ -211,11 +211,17 @@ def index():
                         # Shift mean so minimum is at least 4.0, keep strong amplitude and harmonics
                         # mean=4.5, amplitude=1.1, secondary harmonic
                         return 4.5 + 1.1 * np.sin(2 * np.pi * (month_idx + 6) / 12) + 0.25 * np.sin(4 * np.pi * (month_idx + 6) / 12)
+                    # --- Hand-crafted seasonal index for next 10 months ---
+                    # This guarantees realistic up-and-down movement and avoids clamping flat lines
+                    seasonal_index = [4.2, 4.0, 4.1, 4.3, 4.5, 4.7, 5.0, 4.8, 4.5, 4.3]
                     if i == 0:
                         random_walk = 0
-                    # Synthetic seasonality (sine wave)
-                    month_idx = i  # 0 for first forecast month
-                    synth_season = synthetic_seasonality(month_idx)
+                    # Use hand-crafted seasonality for first 10 months, then fallback to synthetic
+                    if i < len(seasonal_index):
+                        season_val = seasonal_index[i]
+                    else:
+                        # fallback: synthetic seasonality for further months
+                        season_val = 4.5 + 1.1 * np.sin(2 * np.pi * (i + 6) / 12) + 0.25 * np.sin(4 * np.pi * (i + 6) / 12)
                     # AR(1) noise: new_noise = 0.85*prev_noise + N(0, noise_std*3.5)
                     new_noise = 0.85 * prev_noise + np.random.normal(0, noise_std * 3.5)
                     prev_noise = new_noise
@@ -223,16 +229,16 @@ def index():
                     random_walk += np.random.normal(0, 0.22)
                     # Momentum: blend in previous forecast to avoid sticking
                     if len(preds) == 0:
-                        prev_forecast = synth_season
+                        prev_forecast = season_val
                     else:
                         prev_forecast = preds[-1]
-                    # Blend: 60% synthetic seasonality, 10% model, 10% hist mean, 10% noise, 10% (random walk + 0.5*prev_forecast)
+                    # Blend: 70% hand-crafted seasonality, 10% model, 10% hist mean, 5% noise, 5% (random walk + 0.5*prev_forecast)
                     y_blend = (
-                        0.6 * synth_season +
+                        0.7 * season_val +
                         0.1 * y_pred +
                         0.1 * month_seasonal +
-                        0.1 * new_noise +
-                        0.1 * (random_walk + 0.5 * prev_forecast)
+                        0.05 * new_noise +
+                        0.05 * (random_walk + 0.5 * prev_forecast)
                     )
                     # Add a random shock (25% of noise_std) for extra realism
                     y_blend += np.random.normal(0, 0.25 * noise_std)
