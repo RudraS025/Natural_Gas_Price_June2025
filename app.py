@@ -7,6 +7,7 @@ import xgboost as xgb
 from flask import send_file
 import io
 import json
+import hashlib
 
 app = Flask(__name__)
 
@@ -134,6 +135,10 @@ def index():
         # --- Forecasting: use recursive feature generation for both Excel/manual ---
         if input_df is not None and error is None and action == 'forecast':
             try:
+                # --- Set deterministic random seed based on input values ---
+                input_str = input_df.to_json()  # includes all exogenous values and months
+                seed = int(hashlib.sha256(input_str.encode('utf-8')).hexdigest(), 16) % (2**32)
+                np.random.seed(seed)
                 # Strip whitespace from DataFrame columns to match model features
                 input_df.columns = [str(col).strip() for col in input_df.columns]
                 lag_cols = [col for col in FEATURES if '_lag' in col]
@@ -259,7 +264,7 @@ def index():
                 # Round forecast values to two decimal places and format dates as 'Mon-YYYY'
                 forecast = [(pd.to_datetime(m).strftime('%b-%Y'), round(float(f), 2)) for m, f in zip(input_df['Month'], preds)]
                 # Prepare chart data: last 15 non-NaN actuals + forecast, and connect last actual to first forecast
-                full_actuals = last_actuals_df[['Month', last_actuals_df.columns[-1]]].copy()
+                full_actuals = last_actuals_df[['Month', last_actuals_df.columns[-1]].copy()
                 # Only keep rows with non-NaN values for the target
                 valid_actuals = full_actuals.dropna(subset=[full_actuals.columns[-1]])
                 last_15_actuals = valid_actuals.tail(15)
