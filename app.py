@@ -264,7 +264,7 @@ def index():
                 # Round forecast values to two decimal places and format dates as 'Mon-YYYY'
                 forecast = [(pd.to_datetime(m).strftime('%b-%Y'), round(float(f), 2)) for m, f in zip(input_df['Month'], preds)]
                 # Prepare chart data: last 15 non-NaN actuals + forecast, and connect last actual to first forecast
-                full_actuals = last_actuals_df[['Month', last_actuals_df.columns[-1]].copy()
+                full_actuals = last_actuals_df[['Month', last_actuals_df.columns[-1]]].copy()
                 # Only keep rows with non-NaN values for the target
                 valid_actuals = full_actuals.dropna(subset=[full_actuals.columns[-1]])
                 last_15_actuals = valid_actuals.tail(15)
