@@ -209,14 +209,15 @@ def index():
                         month_seasonal = np.mean(month_hist[forecast_month][-10:])
                     else:
                         month_seasonal = np.mean(hist_prices[-12:])
-                    # --- Strong hand-crafted seasonal index for next 10 months ---
+                    # --- Hand-crafted seasonal index for next 10 months ---
                     seasonal_index = [4.7, 3.8, 4.9, 3.7, 4.8, 3.9, 4.6, 4.0, 4.8, 3.6]
                     if i == 0:
                         random_walk = 0
                     if i < len(seasonal_index):
                         season_val = seasonal_index[i] + np.random.normal(0, 0.45)
                     else:
-                        season_val = 4.3 + 0.9 * np.sin(2 * np.pi * (i + 6) / 12) + 0.4 * np.sin(4 * np.pi * (i + 6) / 12) + np.random.normal(0, 0.3)
+                        # After 10 months, continue with a synthetic seasonality + noise + random walk
+                        season_val = 4.3 + 0.9 * np.sin(2 * np.pi * (i + 6) / 12) + 0.4 * np.sin(4 * np.pi * (i + 6) / 12) + np.random.normal(0, 0.45) + np.random.normal(0, 0.45)
                     # AR(1) noise: new_noise = 0.85*prev_noise + N(0, noise_std*5.0)
                     new_noise = 0.85 * prev_noise + np.random.normal(0, noise_std * 5.0)
                     prev_noise = new_noise
@@ -226,7 +227,7 @@ def index():
                         prev_forecast = season_val
                     else:
                         prev_forecast = preds[-1]
-                    # Blend: 45% hand-crafted seasonality, 15% model, 10% hist mean, 20% noise, 10% (random walk + 0.5*prev_forecast)
+                    # Blend: 45% seasonality, 15% model, 10% hist mean, 20% noise, 10% (random walk + 0.5*prev_forecast)
                     y_blend = (
                         0.45 * season_val +
                         0.15 * y_pred +
