@@ -8,6 +8,106 @@ NG working underground storage (BCM)
 Exports (in BCM)
 Henryhub NG prices (USD/MMBtu)_lag1
 Henryhub NG prices (USD/MMBtu)_lag2
+Henryhub NG prices (USD/MMBtu)_lag3
+Henryhub NG prices (USD/MMBtu)_lag6
+Henryhub NG prices (USD/MMBtu)_lag12
 Henryhub NG prices (USD/MMBtu)_roll3
+Henryhub NG prices (USD/MMBtu)_roll6
+Henryhub NG prices (USD/MMBtu)_roll12
+Henryhub NG prices (USD/MMBtu)_rollstd3
+Henryhub NG prices (USD/MMBtu)_rollstd6
+Henryhub NG prices (USD/MMBtu)_rollstd12
+Production (in BCM)_lag1
+Production (in BCM)_lag2
+Production (in BCM)_lag3
+Production (in BCM)_lag6
+Production (in BCM)_lag12
+Production (in BCM)_roll3
+Production (in BCM)_roll6
+Production (in BCM)_roll12
+Production (in BCM)_rollstd3
+Production (in BCM)_rollstd6
+Production (in BCM)_rollstd12
+Residential Consumption_lag1
+Residential Consumption_lag2
+Residential Consumption_lag3
+Residential Consumption_lag6
+Residential Consumption_lag12
+Residential Consumption_roll3
+Residential Consumption_roll6
+Residential Consumption_roll12
+Residential Consumption_rollstd3
+Residential Consumption_rollstd6
+Residential Consumption_rollstd12
+Commercial Consumption_lag1
+Commercial Consumption_lag2
+Commercial Consumption_lag3
+Commercial Consumption_lag6
+Commercial Consumption_lag12
+Commercial Consumption_roll3
+Commercial Consumption_roll6
+Commercial Consumption_roll12
+Commercial Consumption_rollstd3
+Commercial Consumption_rollstd6
+Commercial Consumption_rollstd12
+Industrial Consumption_lag1
+Industrial Consumption_lag2
+Industrial Consumption_lag3
+Industrial Consumption_lag6
+Industrial Consumption_lag12
+Industrial Consumption_roll3
+Industrial Consumption_roll6
+Industrial Consumption_roll12
+Industrial Consumption_rollstd3
+Industrial Consumption_rollstd6
+Industrial Consumption_rollstd12
+Electric Power Consumption_lag1
+Electric Power Consumption_lag2
+Electric Power Consumption_lag3
+Electric Power Consumption_lag6
+Electric Power Consumption_lag12
+Electric Power Consumption_roll3
+Electric Power Consumption_roll6
+Electric Power Consumption_roll12
+Electric Power Consumption_rollstd3
+Electric Power Consumption_rollstd6
+Electric Power Consumption_rollstd12
+Other Consumption_lag1
+Other Consumption_lag2
+Other Consumption_lag3
+Other Consumption_lag6
+Other Consumption_lag12
+Other Consumption_roll3
+Other Consumption_roll6
+Other Consumption_roll12
+Other Consumption_rollstd3
+Other Consumption_rollstd6
+Other Consumption_rollstd12
+NG working underground storage (BCM) _lag1
+NG working underground storage (BCM) _lag2
+NG working underground storage (BCM) _lag3
+NG working underground storage (BCM) _lag6
+NG working underground storage (BCM) _lag12
+NG working underground storage (BCM) _roll3
+NG working underground storage (BCM) _roll6
+NG working underground storage (BCM) _roll12
+NG working underground storage (BCM) _rollstd3
+NG working underground storage (BCM) _rollstd6
+NG working underground storage (BCM) _rollstd12
+Exports (in BCM)_lag1
+Exports (in BCM)_lag2
+Exports (in BCM)_lag3
+Exports (in BCM)_lag6
+Exports (in BCM)_lag12
+Exports (in BCM)_roll3
+Exports (in BCM)_roll6
+Exports (in BCM)_roll12
+Exports (in BCM)_rollstd3
+Exports (in BCM)_rollstd6
+Exports (in BCM)_rollstd12
 month_sin
 month_cos
+quarter_sin
+quarter_cos
+target_mom
+target_yoy

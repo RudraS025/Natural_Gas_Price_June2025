@@ -55,33 +55,43 @@ plt.tight_layout()
 plt.savefig('rf_test_vs_prediction.png')
 plt.close()
 
-# --- Feature Engineering: Lag, Rolling, Cyclical ---
-LAGS = [1, 2]
-ROLLS = [3]
+# --- Enhanced Feature Engineering: More Lags, Rolling Stats, Cyclical, Deltas ---
+LAGS = [1, 2, 3, 6, 12]
+ROLLS = [3, 6, 12]
 
+# Add lag/rolling features for all independent variables and target
 df = original_df.copy()
-# Lag features for target
-target_lag_cols = []
-for lag in LAGS:
-    col = f'{target_col}_lag{lag}'
-    df[col] = df[target_col].shift(lag)
-    target_lag_cols.append(col)
-# Rolling mean features for target
-roll_cols = []
-for roll in ROLLS:
-    col = f'{target_col}_roll{roll}'
-    df[col] = df[target_col].rolling(roll).mean().shift(1)
-    roll_cols.append(col)
+feature_cols = independent_vars.copy()
+for var in [target_col] + independent_vars:
+    # Lags
+    for lag in LAGS:
+        col = f'{var}_lag{lag}'
+        df[col] = df[var].shift(lag)
+        feature_cols.append(col)
+    # Rolling means
+    for roll in ROLLS:
+        col = f'{var}_roll{roll}'
+        df[col] = df[var].rolling(roll).mean().shift(1)
+        feature_cols.append(col)
+    # Rolling std
+    for roll in ROLLS:
+        col = f'{var}_rollstd{roll}'
+        df[col] = df[var].rolling(roll).std().shift(1)
+        feature_cols.append(col)
 # Cyclical month features
 df['month'] = df.index.month
 df['month_sin'] = np.sin(2 * np.pi * df['month'] / 12)
 df['month_cos'] = np.cos(2 * np.pi * df['month'] / 12)
-
+df['quarter'] = df.index.quarter
+df['quarter_sin'] = np.sin(2 * np.pi * df['quarter'] / 4)
+df['quarter_cos'] = np.cos(2 * np.pi * df['quarter'] / 4)
+feature_cols += ['month_sin', 'month_cos', 'quarter_sin', 'quarter_cos']
+# Month-over-month and year-over-year changes for target
+df['target_mom'] = df[target_col].pct_change(1)
+df['target_yoy'] = df[target_col].pct_change(12)
+feature_cols += ['target_mom', 'target_yoy']
 # Drop rows with NA (from lag/rolling)
 df = df.dropna().copy()
-
-# New feature list
-feature_cols = independent_vars + target_lag_cols + roll_cols + ['month_sin', 'month_cos']
 X = df[feature_cols]
 y = df[target_col]
 
@@ -95,22 +105,46 @@ joblib.dump(scaler, 'scaler.save')
 X_train_scaled = scaler.transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
-# Train XGBoost (with features)
-xgb_model = xgb.XGBRegressor(n_estimators=300, random_state=42)
+# XGBoost with tuned hyperparameters
+xgb_model = xgb.XGBRegressor(
+    n_estimators=500,
+    learning_rate=0.05,
+    max_depth=6,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    reg_alpha=1,
+    reg_lambda=2,
+    random_state=42
+)
 xgb_model.fit(X_train_scaled, y_train)
 joblib.dump(xgb_model, 'natural_gas_price_xgb_model.pkl')
 xgb_pred = xgb_model.predict(X_test_scaled)
-xgb_results = pd.DataFrame({'Month': y_test.index, 'Actual': y_test.values, 'Predicted': xgb_pred})
-xgb_results.to_excel('xgb_test_vs_prediction_results.xlsx', index=False)
+
+# Random Forest (ensemble)
+rf_model = RandomForestRegressor(n_estimators=300, max_depth=8, random_state=42)
+rf_model.fit(X_train_scaled, y_train)
+joblib.dump(rf_model, 'natural_gas_price_rf_model.pkl')
+rf_pred = rf_model.predict(X_test_scaled)
+
+# Ensemble: average predictions
+ensemble_pred = (xgb_pred + rf_pred) / 2
+# Post-processing: apply a floor (e.g., minimum price = 2.5)
+ensemble_pred = np.maximum(ensemble_pred, 2.5)
+
+# Save results
+results = pd.DataFrame({'Month': y_test.index, 'Actual': y_test.values, 'XGB': xgb_pred, 'RF': rf_pred, 'Ensemble': ensemble_pred})
+results.to_excel('ensemble_test_vs_prediction_results.xlsx', index=False)
 plt.figure(figsize=(10,6))
 plt.plot(y_test.index, y_test, label='Actual')
-plt.plot(y_test.index, xgb_pred, label='XGB Predicted')
+plt.plot(y_test.index, ensemble_pred, label='Ensemble Forecast', linestyle='--')
+plt.plot(y_test.index, xgb_pred, label='XGB Only', alpha=0.5)
+plt.plot(y_test.index, rf_pred, label='RF Only', alpha=0.5)
 plt.legend()
-plt.title('XGBoost: Test vs Prediction (Lag/Roll/Cyclical Features)')
+plt.title('Ensemble: Test vs Prediction (Enhanced Features)')
 plt.xlabel('Month')
 plt.ylabel(target_col)
 plt.tight_layout()
-plt.savefig('xgb_test_vs_prediction.png')
+plt.savefig('ensemble_test_vs_prediction.png')
 plt.close()
 
 # Save feature names for Flask app
@@ -119,8 +153,8 @@ with open('feature_names.txt', 'w') as f:
         f.write(f"{col}\n")
 
 # Save last N months of actuals for recursive forecasting
-N = max(LAGS + ROLLS)
+N = max(LAGS + ROLLS + [12])
 last_actuals = df.iloc[-N:][[target_col]].copy()
 last_actuals.to_csv('last_actuals.csv')
 
-print('XGBoost with lag/rolling/cyclical features trained and results saved.')
+print('Ensemble model with enhanced features trained and results saved.')
