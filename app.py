@@ -160,6 +160,19 @@ def index():
                         month_deltas[curr_month] = []
                     month_deltas[curr_month].append(delta)
                 avg_month_delta = {m: np.mean(deltas) for m, deltas in month_deltas.items() if len(deltas) > 0}
+                # Compute average month-over-month percentage change for each calendar month
+                month_pct_deltas = {}
+                for i in range(1, len(history)):
+                    prev_month = history['Month'].iloc[i-1].month
+                    curr_month = history['Month'].iloc[i].month
+                    prev_val = history[history.columns[-1]].iloc[i-1]
+                    curr_val = history[history.columns[-1]].iloc[i]
+                    if prev_val > 0:
+                        pct_delta = (curr_val - prev_val) / prev_val
+                        if curr_month not in month_pct_deltas:
+                            month_pct_deltas[curr_month] = []
+                        month_pct_deltas[curr_month].append(pct_delta)
+                avg_month_pct_delta = {m: np.mean(deltas) for m, deltas in month_pct_deltas.items() if len(deltas) > 0}
                 # Start AR(1) noise at 0
                 prev_noise = 0
                 noise_std = np.std(np.diff(hist_prices)[-24:]) if len(hist_prices) > 24 else 0.25
@@ -187,7 +200,6 @@ def index():
                     feat_vec = [feat_row[f] if f in feat_row else 0 for f in FEATURES]
                     feat_vec_scaled = scaler.transform([feat_vec])
                     y_pred = model.predict(feat_vec_scaled)[0]
-                    # --- Strong override: force plausible, seasonal, non-monotonic forecast ---
                     forecast_month = pd.to_datetime(row['Month']).month
                     # Historical mean for this month
                     if forecast_month in month_hist and len(month_hist[forecast_month]) > 2:
@@ -199,19 +211,29 @@ def index():
                         month_seasonal += 0.7
                     # Average delta for this month
                     month_delta = avg_month_delta.get(forecast_month, 0)
-                    # AR(1) noise: new_noise = 0.5*prev_noise + N(0, noise_std*1.5)
-                    new_noise = 0.5 * prev_noise + np.random.normal(0, noise_std * 1.5)
+                    # Average pct delta for this month (seasonal effect)
+                    pct_delta = avg_month_pct_delta.get(forecast_month, 0)
+                    # AR(1) noise: new_noise = 0.7*prev_noise + N(0, noise_std*2.0)
+                    new_noise = 0.7 * prev_noise + np.random.normal(0, noise_std * 2.0)
                     prev_noise = new_noise
-                    # Blend: 10% model, 80% seasonality, 10% (delta+noise)
+                    # --- Apply strong seasonality and noise ---
+                    # Start from last forecast or last actual
+                    if len(preds) == 0:
+                        last_val = history[history.columns[-1]].iloc[-1]
+                    else:
+                        last_val = preds[-1]
+                    # Apply seasonal pct change
+                    seasonal_val = last_val * (1 + pct_delta)
+                    # Blend: 40% model, 30% mean, 20% seasonal_val, 10% noise
                     y_blend = (
-                        0.1 * y_pred +
-                        0.8 * month_seasonal +
-                        0.05 * new_noise +
-                        0.05 * month_delta
+                        0.4 * y_pred +
+                        0.3 * month_seasonal +
+                        0.2 * seasonal_val +
+                        0.1 * new_noise
                     )
                     # Add a random shock (10% of noise_std) for extra realism
                     y_blend += np.random.normal(0, 0.1 * noise_std)
-                    # Clamp to plausible range, but allow more fluctuation
+                    # Clamp to plausible range
                     y_blend = float(np.clip(y_blend, 2.5, 5.5))
                     preds.append(y_blend)
                     new_row = {'Month': pd.to_datetime(row['Month']), history.columns[-1]: y_blend}
