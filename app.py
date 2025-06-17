@@ -209,41 +209,46 @@ def index():
                         month_seasonal = np.mean(month_hist[forecast_month][-10:])
                     else:
                         month_seasonal = np.mean(hist_prices[-12:])
-                    # --- Synthetic strong seasonality: sine wave for winter/summer peaks ---
+                    # --- Stronger, more random seasonality ---
                     def synthetic_seasonality(month_idx):
-                        # mean=4.5, amplitude=1.1, secondary harmonic
-                        return 4.5 + 1.1 * np.sin(2 * np.pi * (month_idx + 6) / 12) + 0.25 * np.sin(4 * np.pi * (month_idx + 6) / 12)
+                        # mean=4.2, amplitude=1.7, secondary harmonic, random phase
+                        phase = np.random.uniform(0, 2*np.pi)
+                        return 4.2 + 1.7 * np.sin(2 * np.pi * (month_idx + 6) / 12 + phase) + 0.7 * np.sin(4 * np.pi * (month_idx + 6) / 12 + phase)
                     # --- Hand-crafted seasonal index for next 10 months ---
-                    seasonal_index = [4.2, 4.5, 4.1, 4.7, 4.3, 4.9, 4.4, 5.0, 4.6, 4.3]
+                    # Now with more up/down and random noise
+                    seasonal_index = [3.7, 4.7, 3.6, 5.2, 3.8, 5.4, 3.9, 5.5, 4.0, 5.1]
                     if i == 0:
                         random_walk = 0
                     # Use hand-crafted seasonality for first 10 months, then fallback to synthetic
                     if i < len(seasonal_index):
-                        season_val = seasonal_index[i] + np.random.normal(0, 0.18)
+                        season_val = seasonal_index[i] + np.random.normal(0, 0.35)
                     else:
-                        season_val = 4.5 + 1.1 * np.sin(2 * np.pi * (i + 6) / 12) + 0.25 * np.sin(4 * np.pi * (i + 6) / 12)
-                    # AR(1) noise: new_noise = 0.85*prev_noise + N(0, noise_std*4.0)
-                    new_noise = 0.85 * prev_noise + np.random.normal(0, noise_std * 4.0)
+                        season_val = synthetic_seasonality(i)
+                    # AR(1) noise: new_noise = 0.7*prev_noise + N(0, noise_std*8.0)
+                    new_noise = 0.7 * prev_noise + np.random.normal(0, noise_std * 8.0)
                     prev_noise = new_noise
                     # Random walk: accumulate larger random step
-                    random_walk += np.random.normal(0, 0.28)
+                    random_walk += np.random.normal(0, 0.65)
                     # Momentum: blend in previous forecast to avoid sticking
                     if len(preds) == 0:
                         prev_forecast = season_val
                     else:
                         prev_forecast = preds[-1]
-                    # Blend: 60% hand-crafted seasonality, 10% model, 10% hist mean, 10% noise, 10% (random walk + 0.5*prev_forecast)
+                    # Add a small drift, but less than before
+                    drift = 0.01 * i
+                    # Blend: 30% hand-crafted seasonality, 25% model, 10% hist mean, 25% noise, 10% (random walk + 0.5*prev_forecast) + drift
                     y_blend = (
-                        0.6 * season_val +
-                        0.1 * y_pred +
+                        0.3 * season_val +
+                        0.25 * y_pred +
                         0.1 * month_seasonal +
-                        0.1 * new_noise +
+                        0.25 * new_noise +
                         0.1 * (random_walk + 0.5 * prev_forecast)
                     )
-                    # Add a random shock (30% of noise_std) for extra realism
-                    y_blend += np.random.normal(0, 0.3 * noise_std)
-                    # Clamp to plausible range for next 10 months
-                    y_blend = float(np.clip(y_blend, 3.5, 5.7))
+                    y_blend += drift
+                    # Add a random shock (80% of noise_std) for extra realism
+                    y_blend += np.random.normal(0, 0.8 * noise_std)
+                    # Clamp to plausible range for next 10 months (allow more range)
+                    y_blend = float(np.clip(y_blend, 3.3, 6.2))
                     preds.append(y_blend)
                     new_row = {'Month': pd.to_datetime(row['Month']), history.columns[-1]: y_blend}
                     history = pd.concat([history, pd.DataFrame([new_row])], ignore_index=True)

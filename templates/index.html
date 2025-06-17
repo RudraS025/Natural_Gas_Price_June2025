@@ -259,8 +259,8 @@
                     y: {
                         title: { display: true, text: 'Henryhub NG prices (USD/MMBtu)' },
                         beginAtZero: false,
-                        suggestedMin: Math.min(...allData.concat(forecastData)) - 0.5,
-                        suggestedMax: Math.max(...allData.concat(forecastData)) + 0.5
+                        min: Math.min(...allData.concat(forecastData)) - 0.3,
+                        max: Math.max(...allData.concat(forecastData)) + 0.3
                     }
                 }
             }
