@@ -134,7 +134,8 @@ def index():
                 # Strip whitespace from DataFrame columns to match model features
                 input_df.columns = [str(col).strip() for col in input_df.columns]
                 lag_cols = [col for col in FEATURES if '_lag' in col]
-                roll_cols = [col for col in FEATURES if '_roll' in col]
+                # Only include roll columns that do NOT contain 'std' (i.e., not '_rollstd')
+                roll_cols = [col for col in FEATURES if '_roll' in col and 'std' not in col]
                 cyc_cols = ['month_sin', 'month_cos']
                 exog_cols = EXOGENOUS_VARS
                 history = last_actuals_df.copy()
@@ -145,10 +146,18 @@ def index():
                     for col in exog_cols:
                         feat_row[col] = row.get(col, np.nan)
                     for lag_col in lag_cols:
-                        lag_n = int(lag_col.split('_lag')[-1])
+                        # Only extract the number after '_lag' and ignore any other text
+                        try:
+                            lag_n = int(lag_col.split('_lag')[-1])
+                        except Exception:
+                            continue
                         feat_row[lag_col] = history[history.columns[-1]].iloc[-lag_n]
                     for roll_col in roll_cols:
-                        roll_n = int(roll_col.split('_roll')[-1])
+                        # Only extract the number after '_roll' and ignore any other text
+                        try:
+                            roll_n = int(roll_col.split('_roll')[-1])
+                        except Exception:
+                            continue
                         feat_row[roll_col] = history[history.columns[-1]].iloc[-roll_n:].mean()
                     month_sin, month_cos = get_month_cyclical_features(row['Month'])
                     feat_row['month_sin'] = month_sin
