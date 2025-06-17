@@ -4,6 +4,9 @@ import pandas as pd
 import joblib
 import os
 import xgboost as xgb
+from flask import send_file
+import io
+import json
 
 app = Flask(__name__)
 
@@ -248,7 +251,8 @@ def index():
                     preds.append(y_blend)
                     new_row = {'Month': pd.to_datetime(row['Month']), history.columns[-1]: y_blend}
                     history = pd.concat([history, pd.DataFrame([new_row])], ignore_index=True)
-                forecast = list(zip(input_df['Month'], preds))
+                # Round forecast values to two decimal places and format dates as 'Mon-YYYY'
+                forecast = [(pd.to_datetime(m).strftime('%b-%Y'), round(float(f), 2)) for m, f in zip(input_df['Month'], preds)]
                 # Prepare chart data: last 15 non-NaN actuals + forecast, and connect last actual to first forecast
                 full_actuals = last_actuals_df[['Month', last_actuals_df.columns[-1]]].copy()
                 # Only keep rows with non-NaN values for the target
@@ -256,23 +260,38 @@ def index():
                 last_15_actuals = valid_actuals.tail(15)
                 # Connect last actual to first forecast for smooth line
                 if len(forecast) > 0 and len(last_15_actuals) > 0:
-                    forecast_months = [str(m)[:10] for m, _ in forecast]
-                    forecast_values = [float(f) for _, f in forecast]
+                    forecast_months = [m for m, _ in forecast]
+                    forecast_values = [f for _, f in forecast]
                     # Insert the last actual value as the first forecast value
-                    forecast_months = [last_15_actuals['Month'].iloc[-1].strftime('%Y-%m')] + forecast_months
-                    forecast_values = [last_15_actuals[last_15_actuals.columns[-1]].iloc[-1]] + forecast_values
+                    forecast_months = [last_15_actuals['Month'].iloc[-1].strftime('%b-%Y')] + forecast_months
+                    forecast_values = [round(float(last_15_actuals[last_15_actuals.columns[-1]].iloc[-1]), 2)] + forecast_values
                 else:
-                    forecast_months = [str(m)[:10] for m, _ in forecast]
-                    forecast_values = [float(f) for _, f in forecast]
+                    forecast_months = [m for m, _ in forecast]
+                    forecast_values = [f for _, f in forecast]
                 chart_data = {
-                    'actual_months': last_15_actuals['Month'].dt.strftime('%Y-%m').tolist(),
-                    'actual_values': last_15_actuals[last_15_actuals.columns[-1]].tolist(),
+                    'actual_months': last_15_actuals['Month'].dt.strftime('%b-%Y').tolist(),
+                    'actual_values': [round(float(v), 2) for v in last_15_actuals[last_15_actuals.columns[-1]].tolist()],
                     'forecast_months': forecast_months,
                     'forecast_values': forecast_values
                 }
             except Exception as e:
                 error = f"Error during forecasting: {e}"
     return render_template('index.html', features=EXOGENOUS_VARS, forecast=forecast, error=error, input_values=input_values, input_dates=input_dates, preview=preview, chart_data=chart_data)
+
+# Add a download route for forecast as Excel
+@app.route('/download_forecast', methods=['POST'])
+def download_forecast():
+    # Get forecast data from form (hidden input as JSON string)
+    forecast_json = request.form.get('forecast_data')
+    if not forecast_json:
+        return 'No forecast data', 400
+    forecast = json.loads(forecast_json)
+    df = pd.DataFrame(forecast, columns=['Month', 'Forecast - Henryhub NG prices (USD/MMBtu)'])
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False)
+    output.seek(0)
+    return send_file(output, as_attachment=True, download_name='forecast.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 if __name__ == '__main__':
     app.run(debug=True)

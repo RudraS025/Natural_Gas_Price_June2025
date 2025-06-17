@@ -147,10 +147,14 @@
                     </thead>
                     <tbody>
                     {% for month, f in forecast %}
-                        <tr><td style="white-space:nowrap;">{{ month }}</td><td>{{ f|round(3) }}</td></tr>
+                        <tr><td style="white-space:nowrap;">{{ month }}</td><td>{{ '%.2f'|format(f) }}</td></tr>
                     {% endfor %}
                     </tbody>
                 </table>
+                <form method="post" action="/download_forecast">
+                    <input type="hidden" name="forecast_data" value='{{ forecast|tojson|safe }}'>
+                    <button class="submit-btn" type="submit" style="width:100%;margin-top:8px;">Download Forecast</button>
+                </form>
             </div>
             {% endif %}
             {% if chart_data %}
