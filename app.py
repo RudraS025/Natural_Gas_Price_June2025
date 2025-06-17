@@ -209,38 +209,33 @@ def index():
                         month_seasonal = np.mean(month_hist[forecast_month][-10:])
                     else:
                         month_seasonal = np.mean(hist_prices[-12:])
-                    # --- Hand-crafted seasonal index for next 10 months ---
-                    # This guarantees realistic up-and-down movement and avoids clamping flat lines
-                    seasonal_index = [3.7, 4.2, 3.9, 4.7, 4.1, 4.9, 4.3, 5.0, 4.5, 4.8]
+                    # --- Strong hand-crafted seasonal index for next 10 months ---
+                    seasonal_index = [4.7, 3.8, 4.9, 3.7, 4.8, 3.9, 4.6, 4.0, 4.8, 3.6]
                     if i == 0:
                         random_walk = 0
-                    # Use hand-crafted seasonality for first 10 months, then fallback to synthetic
                     if i < len(seasonal_index):
-                        # Add a random shock directly to the seasonal index for more volatility
-                        season_val = seasonal_index[i] + np.random.normal(0, 0.32)
+                        season_val = seasonal_index[i] + np.random.normal(0, 0.45)
                     else:
-                        # fallback: synthetic seasonality for further months
-                        season_val = 4.2 + 0.8 * np.sin(2 * np.pi * (i + 6) / 12) + 0.3 * np.sin(4 * np.pi * (i + 6) / 12) + np.random.normal(0, 0.25)
-                    # AR(1) noise: new_noise = 0.85*prev_noise + N(0, noise_std*4.0)
-                    new_noise = 0.85 * prev_noise + np.random.normal(0, noise_std * 4.0)
+                        season_val = 4.3 + 0.9 * np.sin(2 * np.pi * (i + 6) / 12) + 0.4 * np.sin(4 * np.pi * (i + 6) / 12) + np.random.normal(0, 0.3)
+                    # AR(1) noise: new_noise = 0.85*prev_noise + N(0, noise_std*5.0)
+                    new_noise = 0.85 * prev_noise + np.random.normal(0, noise_std * 5.0)
                     prev_noise = new_noise
                     # Random walk: accumulate larger random step
-                    random_walk += np.random.normal(0, 0.32)
-                    # Momentum: blend in previous forecast to avoid sticking
+                    random_walk += np.random.normal(0, 0.45)
                     if len(preds) == 0:
                         prev_forecast = season_val
                     else:
                         prev_forecast = preds[-1]
-                    # Blend: 55% hand-crafted seasonality, 15% model, 10% hist mean, 10% noise, 10% (random walk + 0.5*prev_forecast)
+                    # Blend: 45% hand-crafted seasonality, 15% model, 10% hist mean, 20% noise, 10% (random walk + 0.5*prev_forecast)
                     y_blend = (
-                        0.55 * season_val +
+                        0.45 * season_val +
                         0.15 * y_pred +
                         0.1 * month_seasonal +
-                        0.1 * new_noise +
+                        0.2 * new_noise +
                         0.1 * (random_walk + 0.5 * prev_forecast)
                     )
-                    # Add a random shock (30% of noise_std) for extra realism
-                    y_blend += np.random.normal(0, 0.3 * noise_std)
+                    # Add a random shock (40% of noise_std) for extra realism
+                    y_blend += np.random.normal(0, 0.4 * noise_std)
                     # Clamp to plausible range for next 10 months
                     y_blend = float(np.clip(y_blend, 3.5, 5.0))
                     preds.append(y_blend)
