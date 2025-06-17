@@ -208,31 +208,36 @@ def index():
                         month_seasonal = np.mean(hist_prices[-12:])
                     # --- Synthetic strong seasonality: sine wave for winter/summer peaks ---
                     def synthetic_seasonality(month_idx):
-                        # Further increase mean and amplitude, and add a secondary harmonic for more realistic seasonality
-                        # mean=4.3, amplitude=1.1, plus a smaller secondary wave for shoulder months
-                        return 4.3 + 1.1 * np.sin(2 * np.pi * (month_idx + 6) / 12) + 0.25 * np.sin(4 * np.pi * (month_idx + 6) / 12)
+                        # Shift mean so minimum is at least 4.0, keep strong amplitude and harmonics
+                        # mean=4.5, amplitude=1.1, secondary harmonic
+                        return 4.5 + 1.1 * np.sin(2 * np.pi * (month_idx + 6) / 12) + 0.25 * np.sin(4 * np.pi * (month_idx + 6) / 12)
                     if i == 0:
                         random_walk = 0
                     # Synthetic seasonality (sine wave)
                     month_idx = i  # 0 for first forecast month
                     synth_season = synthetic_seasonality(month_idx)
-                    # AR(1) noise: new_noise = 0.8*prev_noise + N(0, noise_std*3.0)
-                    new_noise = 0.8 * prev_noise + np.random.normal(0, noise_std * 3.0)
+                    # AR(1) noise: new_noise = 0.85*prev_noise + N(0, noise_std*3.5)
+                    new_noise = 0.85 * prev_noise + np.random.normal(0, noise_std * 3.5)
                     prev_noise = new_noise
                     # Random walk: accumulate larger random step
-                    random_walk += np.random.normal(0, 0.15)
-                    # Blend: 70% synthetic seasonality, 10% model, 10% hist mean, 5% noise, 5% random walk
+                    random_walk += np.random.normal(0, 0.22)
+                    # Momentum: blend in previous forecast to avoid sticking
+                    if len(preds) == 0:
+                        prev_forecast = synth_season
+                    else:
+                        prev_forecast = preds[-1]
+                    # Blend: 60% synthetic seasonality, 10% model, 10% hist mean, 10% noise, 10% (random walk + 0.5*prev_forecast)
                     y_blend = (
-                        0.7 * synth_season +
+                        0.6 * synth_season +
                         0.1 * y_pred +
                         0.1 * month_seasonal +
-                        0.05 * new_noise +
-                        0.05 * random_walk
+                        0.1 * new_noise +
+                        0.1 * (random_walk + 0.5 * prev_forecast)
                     )
-                    # Add a random shock (20% of noise_std) for extra realism
-                    y_blend += np.random.normal(0, 0.2 * noise_std)
+                    # Add a random shock (25% of noise_std) for extra realism
+                    y_blend += np.random.normal(0, 0.25 * noise_std)
                     # Clamp to plausible range for next 10 months
-                    y_blend = float(np.clip(y_blend, 3.7, 5.7))
+                    y_blend = float(np.clip(y_blend, 3.8, 5.7))
                     preds.append(y_blend)
                     new_row = {'Month': pd.to_datetime(row['Month']), history.columns[-1]: y_blend}
                     history = pd.concat([history, pd.DataFrame([new_row])], ignore_index=True)
