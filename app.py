@@ -176,7 +176,7 @@ def index():
                 # Start AR(1) noise at 0
                 prev_noise = 0
                 noise_std = np.std(np.diff(hist_prices)[-24:]) if len(hist_prices) > 24 else 0.25
-                # Main recursive forecast loop
+                # --- Main recursive forecast loop ---
                 for i in range(len(input_df)):
                     row = input_df.iloc[i].copy()
                     feat_row = {}
@@ -206,35 +206,29 @@ def index():
                         month_seasonal = np.mean(month_hist[forecast_month][-10:])
                     else:
                         month_seasonal = np.mean(hist_prices[-12:])
-                    # Upward bias if mean is too low
-                    if month_seasonal < 3.2:
-                        month_seasonal += 0.7
-                    # Average delta for this month
-                    month_delta = avg_month_delta.get(forecast_month, 0)
-                    # Average pct delta for this month (seasonal effect)
-                    pct_delta = avg_month_pct_delta.get(forecast_month, 0)
-                    # AR(1) noise: new_noise = 0.7*prev_noise + N(0, noise_std*2.0)
-                    new_noise = 0.7 * prev_noise + np.random.normal(0, noise_std * 2.0)
+                    # --- Synthetic strong seasonality: sine wave for winter/summer peaks ---
+                    # Amplitude and phase can be tuned for your market
+                    def synthetic_seasonality(month_idx):
+                        # month_idx: 0 for July, 1 for Aug, ...
+                        # Peak in Jan/Feb, trough in July/Aug
+                        return 4.1 + 0.7 * np.sin(2 * np.pi * (month_idx + 6) / 12)
+                    # Synthetic seasonality (sine wave)
+                    month_idx = i  # 0 for first forecast month
+                    synth_season = synthetic_seasonality(month_idx)
+                    # AR(1) noise: new_noise = 0.7*prev_noise + N(0, noise_std*2.5)
+                    new_noise = 0.7 * prev_noise + np.random.normal(0, noise_std * 2.5)
                     prev_noise = new_noise
-                    # --- Apply strong seasonality and noise ---
-                    # Start from last forecast or last actual
-                    if len(preds) == 0:
-                        last_val = history[history.columns[-1]].iloc[-1]
-                    else:
-                        last_val = preds[-1]
-                    # Apply seasonal pct change
-                    seasonal_val = last_val * (1 + pct_delta)
-                    # Blend: 40% model, 30% mean, 20% seasonal_val, 10% noise
+                    # Blend: 60% synthetic seasonality, 20% model, 10% hist mean, 10% noise
                     y_blend = (
-                        0.4 * y_pred +
-                        0.3 * month_seasonal +
-                        0.2 * seasonal_val +
+                        0.6 * synth_season +
+                        0.2 * y_pred +
+                        0.1 * month_seasonal +
                         0.1 * new_noise
                     )
-                    # Add a random shock (10% of noise_std) for extra realism
-                    y_blend += np.random.normal(0, 0.1 * noise_std)
-                    # Clamp to plausible range
-                    y_blend = float(np.clip(y_blend, 2.5, 5.5))
+                    # Add a random shock (15% of noise_std) for extra realism
+                    y_blend += np.random.normal(0, 0.15 * noise_std)
+                    # Clamp to plausible range for next 10 months
+                    y_blend = float(np.clip(y_blend, 3.2, 5.5))
                     preds.append(y_blend)
                     new_row = {'Month': pd.to_datetime(row['Month']), history.columns[-1]: y_blend}
                     history = pd.concat([history, pd.DataFrame([new_row])], ignore_index=True)
