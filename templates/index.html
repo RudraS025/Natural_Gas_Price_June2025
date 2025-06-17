@@ -249,14 +249,19 @@
             },
             options: {
                 responsive: true,
-                layout: { padding: { left: 40 } },
+                layout: { padding: { left: 40, right: 40, top: 20, bottom: 20 } },
                 plugins: {
                     legend: { display: true, position: 'top' },
                     title: { display: false }
                 },
                 scales: {
                     x: { title: { display: true, text: 'Month' } },
-                    y: { title: { display: true, text: 'Henryhub NG prices (USD/MMBtu)' } }
+                    y: {
+                        title: { display: true, text: 'Henryhub NG prices (USD/MMBtu)' },
+                        beginAtZero: false,
+                        suggestedMin: Math.min(...allData.concat(forecastData)) - 0.5,
+                        suggestedMax: Math.max(...allData.concat(forecastData)) + 0.5
+                    }
                 }
             }
         });
