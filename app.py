@@ -162,7 +162,7 @@ def index():
                     month_sin, month_cos = get_month_cyclical_features(row['Month'])
                     feat_row['month_sin'] = month_sin
                     feat_row['month_cos'] = month_cos
-                    feat_vec = [feat_row[f] for f in FEATURES]
+                    feat_vec = [feat_row[f] if f in feat_row else 0 for f in FEATURES]
                     feat_vec_scaled = scaler.transform([feat_vec])
                     y_pred = model.predict(feat_vec_scaled)[0]
                     preds.append(y_pred)
