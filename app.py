@@ -150,9 +150,19 @@ def index():
                     if m not in month_hist:
                         month_hist[m] = []
                     month_hist[m].append(p)
+                # Compute average month-over-month delta for each calendar month
+                month_deltas = {}
+                for i in range(1, len(history)):
+                    prev_month = history['Month'].iloc[i-1].month
+                    curr_month = history['Month'].iloc[i].month
+                    delta = history[history.columns[-1]].iloc[i] - history[history.columns[-1]].iloc[i-1]
+                    if curr_month not in month_deltas:
+                        month_deltas[curr_month] = []
+                    month_deltas[curr_month].append(delta)
+                avg_month_delta = {m: np.mean(deltas) for m, deltas in month_deltas.items() if len(deltas) > 0}
                 # Start AR(1) noise at 0
                 prev_noise = 0
-                noise_std = np.std(np.diff(hist_prices)[-24:]) if len(hist_prices) > 24 else 0.15
+                noise_std = np.std(np.diff(hist_prices)[-24:]) if len(hist_prices) > 24 else 0.25
                 # Main recursive forecast loop
                 for i in range(len(input_df)):
                     row = input_df.iloc[i].copy()
@@ -177,18 +187,27 @@ def index():
                     feat_vec = [feat_row[f] if f in feat_row else 0 for f in FEATURES]
                     feat_vec_scaled = scaler.transform([feat_vec])
                     y_pred = model.predict(feat_vec_scaled)[0]
-                    # --- Inject historical seasonality and AR(1) noise ---
+                    # --- Inject strong historical seasonality and AR(1) noise ---
                     forecast_month = pd.to_datetime(row['Month']).month
                     # Historical mean for this month
                     if forecast_month in month_hist and len(month_hist[forecast_month]) > 2:
                         month_seasonal = np.mean(month_hist[forecast_month][-10:])
                     else:
                         month_seasonal = np.mean(hist_prices[-12:])
-                    # AR(1) noise: new_noise = 0.7*prev_noise + N(0, noise_std)
-                    new_noise = 0.7 * prev_noise + np.random.normal(0, noise_std)
+                    # Average delta for this month
+                    month_delta = avg_month_delta.get(forecast_month, 0)
+                    # AR(1) noise: new_noise = 0.5*prev_noise + N(0, noise_std)
+                    new_noise = 0.5 * prev_noise + np.random.normal(0, noise_std)
                     prev_noise = new_noise
-                    # Blend model, seasonality, and noise
-                    y_blend = 0.65 * y_pred + 0.3 * month_seasonal + 0.05 * new_noise
+                    # Blend: 40% model, 40% seasonality, 10% noise, 10% delta
+                    y_blend = (
+                        0.4 * y_pred +
+                        0.4 * month_seasonal +
+                        0.1 * new_noise +
+                        0.1 * month_delta
+                    )
+                    # Add a random shock (5% of noise_std) for extra realism
+                    y_blend += np.random.normal(0, 0.05 * noise_std)
                     # Clamp to plausible range
                     y_blend = float(np.clip(y_blend, 1.5, 6.0))
                     preds.append(y_blend)
