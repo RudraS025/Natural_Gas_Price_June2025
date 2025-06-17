@@ -254,6 +254,13 @@ def index():
                         direction = 1 if y_blend == 3.5 else -1
                         y_blend += direction * np.random.uniform(0.15, 0.35)
                         y_blend = float(np.clip(y_blend, 3.5, 5.0))
+                    # --- Nudge first and last forecast away from bounds if exactly 3.5 or 5.0 ---
+                    if (i == 0 or i == len(input_df)-1) and (y_blend == 3.5 or y_blend == 5.0):
+                        nudge = np.random.uniform(0.03, 0.08)
+                        if y_blend == 5.0:
+                            y_blend -= nudge
+                        else:
+                            y_blend += nudge
                     # Upward bias if mean is too low (after 5th month)
                     if i >= 5 and np.mean(preds) < 4.3:
                         y_blend += 0.25
